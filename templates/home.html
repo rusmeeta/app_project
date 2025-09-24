@@ -6,55 +6,59 @@
   <title>Kisanlink</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-green-50 font-sans">
+<body class="bg-gradient-to-b from-green-100 via-white to-white font-sans text-gray-800">
 
   <!-- Hero Section -->
-  <section class="bg-green-600 text-white">
-    <div class="container mx-auto flex flex-col md:flex-row items-center justify-between px-6 py-16">
-      
-      <!-- Text Content -->
-      <div class="md:w-1/2 text-center md:text-left mb-10 md:mb-0">
-        <h1 class="text-4xl md:text-5xl font-bold mb-4">Welcome to Kisanlink!</h1>
-        <p class="text-lg md:text-xl mb-6 text-green-100">
-          Kisanlink is a smart farm recommendation platform connecting farmers and customers.
-          Discover personalized recommendations and improve your farming decisions.
-        </p>
-        <div class="flex flex-col sm:flex-row justify-center md:justify-start gap-4">
-          <a href="{{ url_for('auth.login_page') }}" class="px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-green-100 transition">Login</a>
-          <a href="{{ url_for('auth.signup_page') }}" class="px-6 py-3 border border-white text-white rounded-lg hover:bg-white hover:text-green-600 transition">Signup</a>
-        </div>
-      </div>
-
-      <!-- Hero Image -->
-      <div class="md:w-1/2 flex justify-center">
-        <img src="{{ url_for('static', filename='images/kisanlink_hero.png') }}" alt="Kisanlink Hero" class="w-80 md:w-full object-contain rounded-lg shadow-lg">
-      </div>
-
+  <section class="text-center py-24 px-4">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4 text-green-700 leading-tight">
+    Welcome to Kisanlink
+  </h1>
+  <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-green-700 leading-tight">
+    Empowering Farmers. Connecting Communities
+  </h3>
+    <p class="text-lg md:text-xl mb-8 max-w-2xl mx-auto text-gray-600">
+      Kisanlink is a smart farm recommendation platform connecting farmers and customers. Get personalized insights and boost productivity.
+    </p>
+    <div class="flex justify-center gap-4 flex-col sm:flex-row">
+      <a href="{{ url_for('auth.login_page') }}" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+        Login
+      </a>
+      <a href="{{ url_for('auth.signup_page') }}" class="border border-green-600 text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition">
+        Signup
+      </a>
     </div>
   </section>
 
-  <!-- Optional Highlights Section -->
-  <section class="container mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-    <!-- Personalized Recommendations -->
-    <div class="bg-white rounded-lg shadow-lg p-6 text-center hover:shadow-2xl transition">
-      <img src="{{ url_for('static', filename='images/recommendations.png') }}" alt="Recommendations" class="mx-auto mb-4 w-24 h-24 object-contain">
-      <h3 class="text-xl font-semibold mb-2 text-green-600">Personalized Recommendations</h3>
-      <p class="text-gray-700">Get suggestions tailored to your profile and location for better farming decisions.</p>
+  <!-- Feature Cards -->
+  <section class="max-w-4xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8 pb-20">
+    
+    <!-- Smart Recommendations -->
+    <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+      <img src="{{ url_for('static', filename='images/recommendations.png') }}" alt="Recommendations" class="w-16 h-16 mx-auto mb-4 object-contain">
+      <h3 class="text-lg font-semibold text-green-700 mb-2">Smart Crop & Product Recommendations</h3>
+      <p class="text-sm text-gray-600">
+        Receive tailored suggestions based on your location, soil, weather, and market demand to boost productivity.
+      </p>
     </div>
 
-    <!-- Community / Users -->
-    <div class="bg-white rounded-lg shadow-lg p-6 text-center hover:shadow-2xl transition">
-      <img src="{{ url_for('static', filename='images/users.png') }}" alt="Users" class="mx-auto mb-4 w-24 h-24 object-contain">
-      <h3 class="text-xl font-semibold mb-2 text-green-600">Community</h3>
-      <p class="text-gray-700">Connect with farmers and customers to share insights and improve farm productivity.</p>
+    <!-- Farmer Marketplace -->
+    <div class="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition">
+      <img src="{{ url_for('static', filename='images/users.png') }}" alt="Marketplace" class="w-16 h-16 mx-auto mb-4 object-contain">
+      <h3 class="text-lg font-semibold text-green-700 mb-2">Farmer-Customer Marketplace</h3>
+      <p class="text-sm text-gray-600">
+        Farmers can list fresh produce. Customers can browse listings, connect directly, and support local agriculture.
+      </p>
     </div>
 
-    <!-- Additional Feature -->
-    <div class="bg-white rounded-lg shadow-lg p-6 text-center hover:shadow-2xl transition">
-      <img src="{{ url_for('static', filename='images/insight.png') }}" alt="Insights" class="mx-auto mb-4 w-24 h-24 object-contain">
-      <h3 class="text-xl font-semibold mb-2 text-green-600">Farm Insights</h3>
-      <p class="text-gray-700">Access expert advice and insights to optimize your crops and yield.</p>
-    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="bg-green-600 text-white text-center py-10 px-4">
+    <h2 class="text-xl md:text-2xl font-semibold mb-3">Ready to grow smarter?</h2>
+    <p class="mb-6 text-base md:text-lg">Join Kisanlink today and be part of a more efficient, transparent, and community-driven farming future.</p>
+    <a href="{{ url_for('auth.signup_page') }}" class="bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-100 transition">
+      Get Started
+    </a>
   </section>
 
 </body>
