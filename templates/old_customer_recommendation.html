@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recommendations - Old Customer</title>
+</head>
+<body>
+    <h2>Recommended Products for You</h2>
+    <a href="/logout">Logout</a>
+
+    <ul>
+        {% for product in products %}
+            <li>{{ product.name }} - {{ product.price }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

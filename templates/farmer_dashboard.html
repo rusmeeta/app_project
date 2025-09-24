@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Farmer Dashboard</title>
+</head>
+<body>
+    <h2>Farmer Dashboard - {{ session.username }}</h2>
+    <a href="/farmer/add-product">Add New Product</a> | 
+    <a href="/logout">Logout</a>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <h3>Your Products:</h3>
+    <!-- You can loop through products here -->
+    <ul>
+        {% for product in products %}
+            <li>{{ product.name }} - {{ product.price }} (Qty: {{ product.quantity }})</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

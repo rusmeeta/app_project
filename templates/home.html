@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kisanlink</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-green-50 font-sans">
+
+  <!-- Hero Section -->
+  <section class="bg-green-600 text-white">
+    <div class="container mx-auto flex flex-col md:flex-row items-center justify-between px-6 py-16">
+      
+      <!-- Text Content -->
+      <div class="md:w-1/2 text-center md:text-left mb-10 md:mb-0">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">Welcome to Kisanlink!</h1>
+        <p class="text-lg md:text-xl mb-6 text-green-100">
+          Kisanlink is a smart farm recommendation platform connecting farmers and customers.
+          Discover personalized recommendations and improve your farming decisions.
+        </p>
+        <div class="flex flex-col sm:flex-row justify-center md:justify-start gap-4">
+          <a href="{{ url_for('auth.login_page') }}" class="px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-green-100 transition">Login</a>
+          <a href="{{ url_for('auth.signup_page') }}" class="px-6 py-3 border border-white text-white rounded-lg hover:bg-white hover:text-green-600 transition">Signup</a>
+        </div>
+      </div>
+
+      <!-- Hero Image -->
+      <div class="md:w-1/2 flex justify-center">
+        <img src="{{ url_for('static', filename='images/kisanlink_hero.png') }}" alt="Kisanlink Hero" class="w-80 md:w-full object-contain rounded-lg shadow-lg">
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Optional Highlights Section -->
+  <section class="container mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+    <!-- Personalized Recommendations -->
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center hover:shadow-2xl transition">
+      <img src="{{ url_for('static', filename='images/recommendations.png') }}" alt="Recommendations" class="mx-auto mb-4 w-24 h-24 object-contain">
+      <h3 class="text-xl font-semibold mb-2 text-green-600">Personalized Recommendations</h3>
+      <p class="text-gray-700">Get suggestions tailored to your profile and location for better farming decisions.</p>
+    </div>
+
+    <!-- Community / Users -->
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center hover:shadow-2xl transition">
+      <img src="{{ url_for('static', filename='images/users.png') }}" alt="Users" class="mx-auto mb-4 w-24 h-24 object-contain">
+      <h3 class="text-xl font-semibold mb-2 text-green-600">Community</h3>
+      <p class="text-gray-700">Connect with farmers and customers to share insights and improve farm productivity.</p>
+    </div>
+
+    <!-- Additional Feature -->
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center hover:shadow-2xl transition">
+      <img src="{{ url_for('static', filename='images/insight.png') }}" alt="Insights" class="mx-auto mb-4 w-24 h-24 object-contain">
+      <h3 class="text-xl font-semibold mb-2 text-green-600">Farm Insights</h3>
+      <p class="text-gray-700">Access expert advice and insights to optimize your crops and yield.</p>
+    </div>
+  </section>
+
+</body>
+</html>
