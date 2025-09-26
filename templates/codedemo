@@ -1,84 +1,277 @@
-from flask import Flask, render_template, session, redirect, url_for
-from flask_cors import CORS
-from routes.auth import auth_bp
-from routes.recommendation import recommendation_bp  # make sure blueprint is imported
+# from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+# from db import get_db_connection
+# import os
+# from werkzeug.utils import secure_filename
 
-app = Flask(__name__, template_folder='templates')
-app.secret_key = "supersecretkey"
-CORS(app)
+# farmer_bp = Blueprint('farmer', __name__, url_prefix='/farmer')
 
-# Register blueprints
-app.register_blueprint(auth_bp)
-app.register_blueprint(recommendation_bp)
+# UPLOAD_FOLDER = 'static/uploads'
+# ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-@app.route('/')
-def home():
-    role = session.get("role")
+# # Make sure upload folder exists
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# def allowed_file(filename):
+#     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# @farmer_bp.route('/dashboard', methods=['GET', 'POST'])
+# def dashboard():
+#     # Check user_type in session
+#     if session.get('user_type') != 'farmer':
+#         return "Unauthorized", 403
+
+#     user_id = session.get('user_id')
+
+#     conn = get_db_connection()
+#     cur = conn.cursor()
+
+#     if request.method == 'POST':
+#         item_name = request.form.get('item_name')
+#         price = request.form.get('price')
+#         location = request.form.get('location')
+#         photo = request.files.get('photo')
+
+#         if not item_name or not price or not location or not photo:
+#             flash('Please fill out all fields and upload a photo.', 'error')
+#         elif not allowed_file(photo.filename):
+#             flash('Invalid file type. Allowed types: png, jpg, jpeg, gif', 'error')
+#         else:
+#             filename = secure_filename(photo.filename)
+#             photo_path = os.path.join(UPLOAD_FOLDER, filename)
+#             photo.save(photo_path)
+
+#             # Store relative path or filename in DB
+#             cur.execute(
+#                 "INSERT INTO farmer_items (farmer_id, item_name, price, photo_path, location) VALUES (%s, %s, %s, %s, %s)",
+#                 (user_id, item_name, price, filename, location)
+#             )
+#             conn.commit()
+#             flash('Item listed successfully!', 'success')
+
+#     # Fetch farmer profile
+#     cur.execute("SELECT fullname, email FROM users WHERE id = %s", (user_id,))
+#     profile = cur.fetchone()
+
+#     # Fetch farmer's items
+#     cur.execute("SELECT item_name, price, photo_path, location FROM farmer_items WHERE farmer_id = %s", (user_id,))
+#     items = cur.fetchall()
+
+#     cur.close()
+#     conn.close()
+
+#     return render_template('farmer/dashboard.html', profile=profile, items=items)
+
+
+# # dashboard
+# <!DOCTYPE html>
+# <html lang="en">
+# <head>
+#   <meta charset="UTF-8" />
+#   <title>Farmer Dashboard - Kisanlink</title>
+#   <script src="https://cdn.tailwindcss.com"></script>
+# </head>
+# <body class="bg-green-50 min-h-screen p-8">
+
+#   <h1 class="text-4xl font-bold text-green-700 mb-6">Welcome, {{ profile[0] }}!</h1>
+
+#   <section class="bg-white rounded-lg shadow p-6 mb-8">
+#     <h2 class="text-2xl font-semibold mb-4">Your Profile</h2>
+#     <p><strong>Username:</strong> {{ profile[0] }}</p>
+#     <p><strong>Email:</strong> {{ profile[1] }}</p>
+#   </section>
+
+#   <section class="bg-white rounded-lg shadow p-6 mb-8">
+#     <h2 class="text-2xl font-semibold mb-4">List a New Item</h2>
+
+#     {% with messages = get_flashed_messages(with_categories=true) %}
+#       {% if messages %}
+#         <div>
+#           {% for category, message in messages %}
+#             <p class="text-{{ 'green' if category == 'success' else 'red' }}-600 mb-2">{{ message }}</p>
+#           {% endfor %}
+#         </div>
+#       {% endif %}
+#     {% endwith %}
+
+#     <form method="POST" enctype="multipart/form-data" class="space-y-4 max-w-md">
+#       <div>
+#         <label for="item_name" class="block font-semibold mb-1">Item Name</label>
+#         <input type="text" id="item_name" name="item_name" required class="w-full border border-gray-300 rounded px-3 py-2" />
+#       </div>
+
+#       <div>
+#         <label for="price" class="block font-semibold mb-1">Price</label>
+#         <input type="number" step="0.01" id="price" name="price" required class="w-full border border-gray-300 rounded px-3 py-2" />
+#       </div>
+
+#       <div>
+#         <label for="location" class="block font-semibold mb-1">Location</label>
+#         <input type="text" id="location" name="location" required class="w-full border border-gray-300 rounded px-3 py-2" />
+#       </div>
+
+#       <div>
+#         <label for="photo" class="block font-semibold mb-1">Photo</label>
+#         <input type="file" id="photo" name="photo" accept="image/*" required class="w-full" />
+#       </div>
+
+#       <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 transition">List Item</button>
+#     </form>
+#   </section>
+
+#   <section class="bg-white rounded-lg shadow p-6">
+#     <h2 class="text-2xl font-semibold mb-4">Your Listed Items</h2>
+
+#     {% if items %}
+#       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+#         {% for item in items %}
+#           <div class="border rounded p-4">
+#             <img src="{{ url_for('static', filename='uploads/' ~ item[2]) }}" alt="{{ item[0] }}" class="w-full h-48 object-cover rounded mb-3" />
+#             <h3 class="text-lg font-semibold">{{ item[0] }}</h3>
+#             <p><strong>Price:</strong> ₹{{ item[1] }}</p>
+#             <p><strong>Location:</strong> {{ item[3] }}</p>
+#           </div>
+#         {% endfor %}
+#       </div>
+#     {% else %}
+#       <p>You have not listed any items yet.</p>
+#     {% endif %}
+#   </section>
+
+# </body>
+# </html>
+
+# app
+
+# from flask import Flask, render_template, session, redirect, url_for
+# from flask_cors import CORS
+# from routes.auth import auth_bp
+# from routes.recommendation import recommendation_bp  # make sure blueprint is imported
+# from routes.farmer import farmer_bp
+
+# app = Flask(__name__, template_folder='templates')
+# app.secret_key = "supersecretkey"
+# CORS(app)
+
+# # Register blueprints
+# app.register_blueprint(auth_bp)
+# app.register_blueprint(farmer_bp)
+# app.register_blueprint(recommendation_bp)
+
+# @app.route('/')
+# def home():
+#     role = session.get("role")
     
-    # Role-based redirects
-    if role == 'admin':
-        return redirect(url_for('admin.dashboard'))  # optional
-    elif role == 'farmer':
-        return redirect(url_for('farmer.dashboard'))  # optional
-    elif role == 'old_customer':
-        return redirect(url_for('recommendation.old_customer_recommendation'))
-    elif role == 'new_customer':
-        return redirect(url_for('recommendation.new_customer_recommendation'))
-    else:
-        return render_template('home.html', user=session.get("username"))
+#     # Role-based redirects
+#     if role == 'admin':
+#         return redirect(url_for('admin.dashboard'))  # optional
+#     elif role == 'farmer':
+#         return redirect(url_for('farmer.dashboard'))  # optional
+#     elif role == 'old_customer':
+#         return redirect(url_for('recommendation.old_customer_recommendation'))
+#     elif role == 'new_customer':
+#         return redirect(url_for('recommendation.new_customer_recommendation'))
+#     else:
+#         return render_template('home.html', user=session.get("username"))
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+# if __name__ == '__main__':
+#     app.run(debug=True, port=5001)
 
-auth_bp
 
-    from flask import Blueprint, render_template, request, redirect, url_for, session
-import psycopg2
+# HISTORY.HTML
+# {% extends 'farmer/base.html' %}
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+# {% block content %}
+# <section class="bg-white rounded-lg shadow p-6">
+#   <h2 class="text-2xl font-semibold mb-4">📜 Activity History</h2>
+#   <p>This section will display what you’ve done recently.</p>
+# </section>
+# {% endblock %}
 
-# Connect to PostgreSQL
-conn = psycopg2.connect(
-    dbname="kisanlink_db",
-    user="kisanlink_user",
-    password="password123",
-    host="localhost",
-    port="5432"
-)
-cur = conn.cursor()
+# ------------------- History -------------------
+# @farmer_bp.route('/history')
+# def history():
+#     if session.get('user_type') != 'farmer':
+#         return "Unauthorized", 403
 
-# Signup
-@auth_bp.route('/signup', methods=['GET', 'POST'])
-def signup_page():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        role = 'new_customer'
-        cur.execute("INSERT INTO users (username, password, role) VALUES (%s, %s, %s)", (username, password, role))
-        conn.commit()
-        return redirect(url_for('auth.login_page'))
-    return render_template('signup.html')
+#     # Optional: Fetch from logs table if you have it
+#     return render_template('farmer/history.html')
 
-# Login
-@auth_bp.route('/login', methods=['GET', 'POST'])
-def login_page():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        cur.execute("SELECT id, role FROM users WHERE username=%s AND password=%s", (username, password))
-        user = cur.fetchone()
-        if user:
-            session['user_id'] = user[0]
-            session['username'] = username
-            session['role'] = user[1]
-            return redirect(url_for('home'))
-        else:
-            return "Invalid credentials"
-    return render_template('login.html')
+# ------------------- Reports -------------------
 
-# Logout
-@auth_bp.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('home'))
+
+# <!-- <a href="{{ url_for('farmer.history') }}" class="block text-gray-700 hover:text-green-600 font-medium">📜 History</a> -->
+
+
+# product
+
+# from flask import Blueprint, request, jsonify
+# from db import get_db_connection
+# from psycopg2.extras import RealDictCursor
+
+
+# products_bp = Blueprint('products', __name__)
+
+# @products_bp.route('/products', methods=['GET'])
+# def get_products():
+#     conn = get_db_connection()
+#     cur = conn.cursor(cursor_factory=RealDictCursor)
+#     cur.execute('''
+#         SELECT products.id, products.name, products.price, locations.name AS location
+#         FROM products LEFT JOIN locations ON products.location_id = locations.id
+#     ''')
+#     products = cur.fetchall()
+#     cur.close()
+#     conn.close()
+#     return jsonify(products)
+
+# @products_bp.route('/products', methods=['POST'])
+# def add_product():
+#     data = request.get_json()
+#     name = data.get('name')
+#     price = data.get('price')
+#     location_id = data.get('location_id')
+
+#     conn = get_db_connection()
+#     cur = conn.cursor()
+#     cur.execute(
+#         'INSERT INTO products (name, price, location_id) VALUES (%s, %s, %s)',
+#         (name, price, location_id)
+#     )
+#     conn.commit()
+#     cur.close()
+#     conn.close()
+#     return jsonify({'message': 'Product added successfully'}), 201
+
+# recommendation
+# from flask import Blueprint, render_template, session
+# import psycopg2
+
+# recommendation_bp = Blueprint('recommendation', __name__, url_prefix='/recommendation')
+
+# # PostgreSQL connection
+# conn = psycopg2.connect(
+#     dbname="kisanlink_db",
+#     user="kisanlink_user",
+#     password="password123",
+#     host="localhost",
+#     port="5432"
+# )
+# cur = conn.cursor()
+
+# # Old customer (personalized)
+# @recommendation_bp.route('/old_customer')
+# def old_customer_recommendation():
+#     if 'user_id' not in session:
+#         return "Please login first"
+#     user_id = session['user_id']
+#     cur.execute("SELECT product_name, description FROM recommendations WHERE user_id=%s", (user_id,))
+#     recommendations = cur.fetchall()
+#     return render_template('old_customer.html', recommendations=recommendations)
+
+# # New customer (general)
+# @recommendation_bp.route('/new_customer')
+# def new_customer_recommendation():
+#     cur.execute("SELECT product_name, description FROM recommendations LIMIT 10")
+#     products = cur.fetchall()
+#     return render_template('new_customer.html', products=products)
 

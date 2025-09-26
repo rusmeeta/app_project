@@ -1,7 +1,8 @@
 from flask import Flask, render_template, session, redirect, url_for
 from flask_cors import CORS
 from routes.auth import auth_bp
-from routes.recommendation import recommendation_bp  # make sure blueprint is imported
+# from routes.recommendation import recommendation_bp  # make sure blueprint is imported
+from routes.farmer import farmer_bp
 
 app = Flask(__name__, template_folder='templates')
 app.secret_key = "supersecretkey"
@@ -9,7 +10,8 @@ CORS(app)
 
 # Register blueprints
 app.register_blueprint(auth_bp)
-app.register_blueprint(recommendation_bp)
+app.register_blueprint(farmer_bp)
+# app.register_blueprint(recommendation_bp)
 
 @app.route('/')
 def home():
