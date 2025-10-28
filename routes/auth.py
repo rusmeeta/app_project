@@ -47,6 +47,9 @@ def signup_page():
 
 # ------------------ LOGIN ------------------
 from datetime import datetime
+from flask import session, flash, redirect, url_for, render_template, request
+from db import get_db_connection
+from .recommendation import get_lat_lon  # geocode function
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login_page():
@@ -61,21 +64,22 @@ def login_page():
 
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, fullname, user_type, password_hash, login_count
+            SELECT id, fullname, user_type, password_hash, login_count, location, latitude, longitude
             FROM users WHERE email = %s
         """, (email,))
         user = cur.fetchone()
 
         if user:
-            user_id, fullname, user_type, db_password, login_count = user
+            user_id, fullname, user_type, db_password, login_count, location, lat, lon = user
 
-            # if check_password_hash(db_password, password):  # Production
+            # Password check
             if password == db_password:  # Dev only
                 # Start session
                 session['user_id'] = user_id
                 session['fullname'] = fullname
                 session['email'] = email
                 session['user_type'] = user_type
+                session['location'] = location
 
                 # Update login_count and last_login
                 new_count = (login_count or 0) + 1
@@ -84,25 +88,30 @@ def login_page():
                     UPDATE users SET login_count = %s, last_login = %s WHERE id = %s
                 """, (new_count, last_login, user_id))
                 conn.commit()
+
+                # Update latitude/longitude if missing
+                if not lat or not lon:
+                    lat, lon = get_lat_lon(location)
+                    if lat and lon:
+                        cur.execute("""
+                            UPDATE users SET latitude = %s, longitude = %s WHERE id = %s
+                        """, (lat, lon, user_id))
+                        conn.commit()
+
                 cur.close()
                 conn.close()
 
-                # Determine if consumer is new or old
+                # Redirect based on role
                 if user_type == 'consumer':
                     if new_count == 1:
-                        # First login → new customer
                         return redirect(url_for('recommendation.new_customer_recommendation'))
                     else:
-                        # Returning customer → old customer
                         return redirect(url_for('recommendation.old_customer_recommendation'))
-
-                # Farmer/admin redirect
                 elif user_type == 'farmer':
                     return redirect(url_for('farmer.dashboard'))
                 elif user_type == 'admin':
                     return redirect(url_for('admin.dashboard'))
 
-                # Fallback
                 return redirect(url_for('home'))
 
             else:
@@ -114,9 +123,6 @@ def login_page():
         conn.close()
 
     return render_template('login.html')
-
-
-
 
 
 # ------------------ LOGOUT ------------------
