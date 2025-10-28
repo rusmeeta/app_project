@@ -46,6 +46,8 @@ def signup_page():
 
 
 # ------------------ LOGIN ------------------
+from datetime import datetime
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
@@ -58,37 +60,63 @@ def login_page():
             return render_template('login.html')
 
         cur = conn.cursor()
-        cur.execute("SELECT id, fullname, user_type, password_hash FROM users WHERE email = %s", (email,))
+        cur.execute("""
+            SELECT id, fullname, user_type, password_hash, login_count
+            FROM users WHERE email = %s
+        """, (email,))
         user = cur.fetchone()
-        cur.close()
-        conn.close()
 
         if user:
-            user_id, fullname, user_type, db_password = user
+            user_id, fullname, user_type, db_password, login_count = user
 
             # if check_password_hash(db_password, password):  # Production
             if password == db_password:  # Dev only
+                # Start session
                 session['user_id'] = user_id
                 session['fullname'] = fullname
                 session['email'] = email
                 session['user_type'] = user_type
 
-                # Redirect based on role
-                if user_type == 'farmer':
-                    return redirect(url_for('farmer.dashboard'))
-                elif user_type == 'consumer':
-                    return redirect(url_for('recommendation.new_customer_recommendation'))  # Or your consumer dashboard
-                elif user_type == 'admin':
-                    return redirect(url_for('admin.dashboard'))  # Admin dashboard
+                # Update login_count and last_login
+                new_count = (login_count or 0) + 1
+                last_login = datetime.now()
+                cur.execute("""
+                    UPDATE users SET login_count = %s, last_login = %s WHERE id = %s
+                """, (new_count, last_login, user_id))
+                conn.commit()
+                cur.close()
+                conn.close()
 
-                return redirect(url_for('home'))  # Fallback
+                # Determine if consumer is new or old
+                if user_type == 'consumer':
+                    if new_count == 1:
+                        # First login → new customer
+                        return redirect(url_for('recommendation.new_customer_recommendation'))
+                    else:
+                        # Returning customer → old customer
+                        return redirect(url_for('recommendation.old_customer_recommendation'))
+
+                # Farmer/admin redirect
+                elif user_type == 'farmer':
+                    return redirect(url_for('farmer.dashboard'))
+                elif user_type == 'admin':
+                    return redirect(url_for('admin.dashboard'))
+
+                # Fallback
+                return redirect(url_for('home'))
 
             else:
                 flash('Incorrect password.', 'error')
         else:
             flash('Email not found.', 'error')
 
+        cur.close()
+        conn.close()
+
     return render_template('login.html')
+
+
+
 
 
 # ------------------ LOGOUT ------------------
