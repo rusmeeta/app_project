@@ -1,0 +1,96 @@
+
+{% extends 'farmer/base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold text-green-700">Welcome, {{ profile[0] }}!</h1>
+    <div class="flex items-center space-x-4">
+      <button class="relative">
+        🔔
+        <span class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">2</span>
+      </button>
+      <img src="{{ profile[2] or url_for('static', filename='images/farmer_default.jpg') }}" alt="Profile" class="w-10 h-10 rounded-full">
+    </div>
+  </div>
+
+  <!-- Sales Overview Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+      <h3 class="text-lg font-semibold text-gray-600">Today's Sales</h3>
+      <p class="text-2xl text-green-700 mt-2">₹{{ sales_today }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+      <h3 class="text-lg font-semibold text-gray-600">Last 7 Days</h3>
+      <p class="text-2xl text-green-700 mt-2">₹{{ sales_7_days }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+      <h3 class="text-lg font-semibold text-gray-600">Last 30 Days</h3>
+      <p class="text-2xl text-green-700 mt-2">₹{{ sales_30_days }}</p>
+    </div>
+  </div>
+
+  <!-- Farmer Info -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-lg p-6 shadow">
+      <h2 class="text-xl font-bold mb-4">📍 Your Info</h2>
+      <p><strong>Email:</strong> {{ profile[1] }}</p>
+      <p><strong>Location:</strong> {{ profile[3] }}</p>
+      <p><strong>Total Products:</strong> {{ total_products }}</p>
+      <p><strong>Total Orders:</strong> {{ total_orders }}</p>
+    </div>
+  </div>
+
+  <!-- Products Overview (Product Cards) -->
+  <div class="bg-white rounded-lg p-6 shadow mb-6">
+    <h2 class="text-xl font-bold mb-4">📦 Products Overview</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {% for product in products %}
+      <div class="border rounded-lg p-4 shadow hover:shadow-lg transition flex flex-col items-center">
+        <img src="{{ url_for('static', filename=product.image_url) if product.image_url else url_for('static', filename='images/product_default.jpg') }}" 
+             alt="{{ product.name }}" class="w-32 h-32 object-cover rounded mb-2">
+        <p class="font-semibold">{{ product.name }}</p>
+        <p class="text-green-600">₹{{ product.price }}/kg</p>
+        <p><strong>Min Order:</strong> {{ product.min_order_qty }} kg</p>
+        <p><strong>Stock:</strong> {{ product.quantity }} kg</p>
+        <p><strong>Location:</strong> {{ product.location }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Sales Trend Chart -->
+  <div class="bg-white rounded-lg p-6 shadow">
+    <h2 class="text-xl font-bold mb-4">📈 Sales Trend</h2>
+    <canvas id="salesChart"></canvas>
+  </div>
+
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('salesChart').getContext('2d');
+
+const salesChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ sales_labels|safe }},
+        datasets: [{
+            label: 'Sales',
+            data: {{ sales_data|safe }},
+            borderColor: 'rgb(34,197,94)',
+            backgroundColor: 'rgba(34,197,94,0.2)',
+            tension: 0.3
+        }]
+    },
+    options: { 
+        responsive: true, 
+        plugins: { legend: { display: false } } 
+    }
+});
+</script>
+
+{% endblock %}

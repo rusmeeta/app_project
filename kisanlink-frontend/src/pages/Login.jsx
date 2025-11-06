@@ -1,0 +1,79 @@
+import React, { useState } from "react";
+
+function Login() {
+  const [formData, setFormData] = useState({ email: "", password: "" });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const res = await fetch("http://localhost:5001/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      alert(`Welcome ${data.user.fullname}!`);
+      // redirect to home or dashboard
+    } else {
+      alert(data.message);
+    }
+  };
+
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-green-50 px-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+        <h2 className="text-3xl font-bold text-green-700 mb-6 text-center">
+          Login
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Your email"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Your password"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-green-600 text-white font-semibold py-3 rounded-md hover:bg-green-700 transition"
+          >
+            Login
+          </button>
+        </form>
+        <p className="mt-6 text-center text-gray-600">
+          Don't have an account?{" "}
+          <a href="/signup" className="text-green-700 font-semibold hover:underline">
+            Sign Up
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default Login;
