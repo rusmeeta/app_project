@@ -20,9 +20,10 @@ function Login() {
       });
       const data = await res.json();
 
-      if (data.status === "success") {
+      if (data.status === "success" && data.user.user_type === "farmer") {
         // Save user info
         localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("farmer_id", data.user.id);
 
         // FORCE redirect to farmer dashboard
         window.location.href = "/farmer/dashboard"; // <--- instant redirect

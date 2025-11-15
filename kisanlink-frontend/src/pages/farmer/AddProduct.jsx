@@ -1,106 +1,130 @@
 import React, { useState } from "react";
+import axios from "axios";
 
-const AddProduct = () => {
+function AddProduct() {
   const [formData, setFormData] = useState({
-    name: "",
+    item_name: "",
     price: "",
-    description: "",
+    location: "",
+    min_order_qty: "",
+    available_stock: "",
+    photo: null,
   });
-  const [message, setMessage] = useState("");
+
+  const farmer_id = localStorage.getItem("farmer_id"); // get farmer id from login
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, files } = e.target;
+    if (files) {
+      setFormData({ ...formData, [name]: files[0] }); // store file
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
+
+    // Validate all fields
+    if (!formData.item_name || !formData.price || !formData.min_order_qty || !formData.available_stock || !formData.location || !formData.photo) {
+      alert("Please fill all fields");
+      return;
+    }
 
     try {
-      const res = await fetch("http://localhost:5001/farmer/add-product", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
+      const payload = new FormData();
+      payload.append("farmer_id", farmer_id);
+      payload.append("item_name", formData.item_name);
+      payload.append("price", parseInt(formData.price));
+      payload.append("location", formData.location);
+      payload.append("min_order_qty", parseInt(formData.min_order_qty));
+      payload.append("available_stock", parseInt(formData.available_stock));
+      payload.append("photo", formData.photo);
 
-      if (data.status === "success") {
-        setMessage("Product added successfully!");
-        setFormData({ name: "", price: "", description: "" }); // reset form
-      } else {
-        setMessage(data.message || "Failed to add product");
+      const res = await axios.post("http://localhost:5001/farmer/add-product", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data.message) {
+        alert(res.data.message);
+        // Clear form
+        setFormData({
+          item_name: "",
+          price: "",
+          location: "",
+          min_order_qty: "",
+          available_stock: "",
+          photo: null,
+        });
       }
-    } catch (err) {
-      console.error(err);
-      setMessage("Server error, try again later.");
+    } catch (error) {
+      console.error("Add product error:", error.response?.data || error.message);
+      alert(error.response?.data?.error || "Server error, please check your backend");
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-green-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-        <h2 className="text-3xl font-bold text-green-700 mb-6 text-center">
-          Add Product
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700">
-              Product Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter product name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700">
-              Price
-            </label>
-            <input
-              type="number"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              required
-              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter price"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter description"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-green-600 text-white font-semibold py-3 rounded-md hover:bg-green-700 transition"
-          >
-            Add Product
-          </button>
-        </form>
-
-        {message && (
-          <p className="mt-4 text-center text-green-600 font-semibold">{message}</p>
-        )}
-      </div>
+    <div style={styles.container}>
+      <h2 ><b>Add Product</b></h2>
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <input
+          type="text"
+          name="item_name"
+          placeholder="Item Name"
+          value={formData.item_name}
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <input
+          type="number"
+          name="price"
+          placeholder="Price"
+          value={formData.price}
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <input
+          type="text"
+          name="location"
+          placeholder="Location"
+          value={formData.location}
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <input
+          type="number"
+          name="min_order_qty"
+          placeholder="Minimum Order Quantity"
+          value={formData.min_order_qty}
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <input
+          type="number"
+          name="available_stock"
+          placeholder="Available Stock"
+          value={formData.available_stock}
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <input
+          type="file"
+          name="photo"
+          accept="image/*"
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <button type="submit" style={styles.button}>Add Product</button>
+      </form>
     </div>
   );
+}
+
+const styles = {
+  container: { width: "400px", margin: "auto", marginTop: "40px", padding: "20px", borderRadius: "10px", backgroundColor: "white", boxShadow: "0 0 10px rgba(0,0,0,0.1)" },
+  form: { display: "flex", flexDirection: "column" },
+  input: { margin: "10px 0", padding: "10px", borderRadius: "5px", border: "1px solid #ccc" },
+  button: { backgroundColor: "#28a745", color: "white", padding: "10px", borderRadius: "5px", border: "none", cursor: "pointer", marginTop: "10px" },
 };
 
 export default AddProduct;
