@@ -3,6 +3,7 @@ from flask_cors import CORS
 from routes.auth import auth_bp
 from routes.farmer import farmer_bp
 import os
+from routes.report import report_bp
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -17,6 +18,7 @@ CORS(app, origins=["http://localhost:3000", "http://localhost:3001"])
 
 app.register_blueprint(auth_bp, url_prefix="/auth")
 app.register_blueprint(farmer_bp, url_prefix="/farmer")
+app.register_blueprint(report_bp)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

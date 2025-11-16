@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import AddProduct from "./AddProduct";
+import Report from "./Report";
+
+
 import ProductList from "./ProductList";
 
 const FarmerDashboard = () => {
@@ -114,7 +117,8 @@ const FarmerDashboard = () => {
 
           {activeTab === "addProduct" && <AddProduct />}
           {activeTab === "productList" && <ProductList />}
-          {activeTab === "reports" && <div>Reports section coming soon...</div>}
+          {activeTab === "reports" && user && <Report farmerId={user.id} />}
+
         </main>
       </div>
     </div>

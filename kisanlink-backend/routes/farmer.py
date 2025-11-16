@@ -153,3 +153,5 @@ def update_product(product_id):
     except Exception as e:
         print("ERROR:", e)
         return jsonify({"error": str(e)}), 500
+    
+    
