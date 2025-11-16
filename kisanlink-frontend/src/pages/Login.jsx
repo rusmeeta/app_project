@@ -1,6 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { login } from "../api/auth"; // adjust path to your auth.js
 
 function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
 
@@ -13,20 +16,25 @@ function Login() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5001/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
+      const data = await login(formData);
+      console.log("Backend response:", data);
 
-      if (data.status === "success" && data.user.user_type === "farmer") {
+      const user = data.user || data; // handle different backend structures
+      const userType = user.user_type || user.userType;
+
+      if (data.status === "success") {
         // Save user info
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("farmer_id", data.user.id);
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("user_id", user.id);
 
-        // FORCE redirect to farmer dashboard
-        window.location.href = "/farmer/dashboard"; // <--- instant redirect
+        // Redirect based on user type
+        if (userType === "farmer") {
+          navigate("/farmer/dashboard");
+        } else if (userType === "consumer") {
+          navigate("/consumer/dashboard"); // make sure this route exists
+        } else {
+          setError("Unknown user type");
+        }
       } else {
         setError(data.message || "Login failed");
       }
@@ -81,7 +89,10 @@ function Login() {
         {error && <p className="mt-4 text-red-600">{error}</p>}
         <p className="mt-6 text-center text-gray-600">
           Don't have an account?{" "}
-          <a href="/signup" className="text-green-700 font-semibold hover:underline">
+          <a
+            href="/signup"
+            className="text-green-700 font-semibold hover:underline"
+          >
             Sign Up
           </a>
         </p>
