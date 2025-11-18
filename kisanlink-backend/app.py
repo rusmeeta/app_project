@@ -15,6 +15,7 @@ from routes.order import order_bp
 from routes.chat import chat_bp
 from routes.recommend import recommend_bp
 
+from routes.products import products_bp
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -38,6 +39,9 @@ app.register_blueprint(consumer_bp, url_prefix="/consumer")
 app.register_blueprint(order_bp, url_prefix="/orders")
 app.register_blueprint(chat_bp, url_prefix="/chat")
 app.register_blueprint(recommend_bp, url_prefix="/recommend")
+
+app.register_blueprint(products_bp, url_prefix="/products")
+
 
 if __name__ == "__main__":
     with app.app_context():
