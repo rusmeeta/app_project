@@ -174,23 +174,7 @@ const Dashboard = () => {
               <p className="text-gray-500 col-span-full">No products available nearby.</p>
             ) : (
               filteredProducts.map((product) => (
-                <div key={product.id} className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
-                  <img
-                    src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
-                    alt={product.item_name}
-                    className="h-40 w-full object-cover rounded-md mb-3"
-                  />
-                  <h3 className="text-lg font-semibold text-gray-800">{product.item_name}</h3>
-                  <p className="text-green-700 font-bold mt-1">Rs {product.price}</p>
-                  <p className="text-sm text-gray-600">Farmer ID: <span className="font-semibold">{product.farmer_id}</span></p>
-                  <p className="text-sm text-blue-600">📍 {product.distance !== null ? `${product.distance} km away` : "Distance unknown"}</p>
-                  <button
-                    className="mt-3 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-                    onClick={() => addToCart(product)}
-                  >
-                    Add to Cart
-                  </button>
-                </div>
+                <ProductCard key={product.id} product={product} addToCart={addToCart} />
               ))
             )}
           </div>
@@ -200,4 +184,45 @@ const Dashboard = () => {
   );
 };
 
+// Separate Product Card component
+const ProductCard = ({ product, addToCart }) => {
+  const [quantity, setQuantity] = useState(product.min_order_qty || 1);
+
+  return (
+    <div className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+      <img
+        src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
+        alt={product.item_name}
+        className="h-40 w-full object-cover rounded-md mb-3"
+      />
+      <h3 className="text-lg font-semibold text-gray-800">{product.item_name}</h3>
+
+      <p className="text-sm text-gray-600">
+        Farmer: <span className="font-semibold">{product.farmer_name}</span> (ID: {product.farmer_id})
+      </p>
+      <p className="text-sm text-blue-600">
+        📍 {product.distance !== null ? `${product.distance} km away` : "Distance unknown"}
+      </p>
+      <p className="text-sm text-gray-500">
+        Min Order Qty: <span className="font-semibold">{product.min_order_qty}</span>
+      </p>
+
+      <div className="mt-2 flex items-center space-x-2">
+        <input
+          type="number"
+          min={product.min_order_qty || 1}
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          className="w-20 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        <button
+          className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition"
+          onClick={() => addToCart({ ...product, quantity })}
+        >
+          Add to Cart
+        </button>
+      </div>
+    </div>
+  );
+};
 export default Dashboard;
