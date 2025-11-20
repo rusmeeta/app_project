@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [cart, setCart] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [toast, setToast] = useState(""); // Toast message
 
   // Load user from localStorage
   useEffect(() => {
@@ -21,28 +22,29 @@ const Dashboard = () => {
     if (!user) return;
 
     try {
-      console.log("Sending coordinates:", { latitude: user.latitude, longitude: user.longitude });
-
-      // Fetch all products from farmer_items
       const res = await fetch("http://localhost:5001/products/farmer-items");
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
 
-      // Calculate distance from user's location
       const withDistance = data.map((item) => ({
         ...item,
-        distance: user.latitude && user.longitude && item.latitude && item.longitude
-          ? getDistanceFromLatLonInKm(
-              parseFloat(user.latitude),
-              parseFloat(user.longitude),
-              parseFloat(item.latitude),
-              parseFloat(item.longitude)
-            ).toFixed(2)
-          : null
+        distance:
+          user.latitude &&
+          user.longitude &&
+          item.latitude &&
+          item.longitude
+            ? getDistanceFromLatLonInKm(
+                parseFloat(user.latitude),
+                parseFloat(user.longitude),
+                parseFloat(item.latitude),
+                parseFloat(item.longitude)
+              ).toFixed(2)
+            : null,
       }));
 
-      // Sort by nearest first
-      withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      withDistance.sort(
+        (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
+      );
       setProducts(withDistance);
     } catch (err) {
       console.error("Failed to fetch products:", err);
@@ -73,6 +75,10 @@ const Dashboard = () => {
     const newCart = [...cart, product];
     setCart(newCart);
     localStorage.setItem("cart", JSON.stringify(newCart));
+
+    // Show toast
+    setToast(`"${product.item_name}" added to cart`);
+    setTimeout(() => setToast(""), 2000); // Hide after 2s
   };
 
   useEffect(() => {
@@ -87,10 +93,9 @@ const Dashboard = () => {
     product.item_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Haversine formula to calculate distance between coordinates
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
-    const R = 6371; // Radius of Earth in km
+    const R = 6371;
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
@@ -106,8 +111,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-72 bg-white shadow-lg p-6 flex flex-col">
-        {/* User Info */}
+      <aside className="w-50 bg-white shadow-lg p-6 flex flex-col">
         <div className="mb-8 text-center">
           <div className="h-20 w-20 mx-auto rounded-full bg-green-500 text-white flex items-center justify-center text-3xl font-bold shadow-lg">
             {user ? user.fullname[0] : "C"}
@@ -138,8 +142,15 @@ const Dashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white shadow-md p-4 flex items-center justify-between">
+      <div className="flex-1 flex flex-col relative">
+        {/* Toast Notification */}
+        {toast && (
+          <div className="fixed top-5 right-5 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 animate-slide-in">
+            {toast}
+          </div>
+        )}
+
+        <header className="bg-white shadow-md p-3 flex items-center justify-between">
           <div className="text-2xl font-bold text-green-600">KisanLink</div>
           <div className="flex-1 mx-6">
             <input
@@ -184,45 +195,68 @@ const Dashboard = () => {
   );
 };
 
-// Separate Product Card component
+// Product Card component
 const ProductCard = ({ product, addToCart }) => {
   const [quantity, setQuantity] = useState(product.min_order_qty || 1);
 
+  const handleQuantityChange = (e) => {
+    let val = Number(e.target.value);
+    if (val < product.min_order_qty) val = product.min_order_qty;
+    if (val > product.available_stock) val = product.available_stock;
+    setQuantity(val);
+  };
+
+  const handleAddToCart = () => {
+    if (quantity > product.available_stock) {
+      alert(`Cannot order more than available stock (${product.available_stock})`);
+      return;
+    }
+    addToCart({ ...product, quantity });
+  };
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+    <div className="bg-white rounded-xl shadow-md hover:shadow-lg hover:scale-105 transform transition duration-200 flex flex-col overflow-hidden relative">
       <img
         src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
         alt={product.item_name}
-        className="h-40 w-full object-cover rounded-md mb-3"
+        className="h-32 w-full object-cover"
       />
-      <h3 className="text-lg font-semibold text-gray-800">{product.item_name}</h3>
-
-      <p className="text-sm text-gray-600">
-        Farmer: <span className="font-semibold">{product.farmer_name}</span> (ID: {product.farmer_id})
-      </p>
-      <p className="text-sm text-blue-600">
-        📍 {product.distance !== null ? `${product.distance} km away` : "Distance unknown"}
-      </p>
-      <p className="text-sm text-gray-500">
-        Min Order Qty: <span className="font-semibold">{product.min_order_qty}</span>
-      </p>
-
-      <div className="mt-2 flex items-center space-x-2">
-        <input
-          type="number"
-          min={product.min_order_qty || 1}
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-          className="w-20 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
-        <button
-          className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition"
-          onClick={() => addToCart({ ...product, quantity })}
-        >
-          Add to Cart
-        </button>
+      {product.available_stock <= 5 && (
+        <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+          Low Stock
+        </span>
+      )}
+      <div className="p-3 flex-1 flex flex-col justify-between">
+        <h3 className="text-md font-semibold text-gray-800 truncate">{product.item_name}</h3>
+        <p className="text-xs text-gray-600 truncate">
+          Farmer: <span className="font-semibold">{product.farmer_name}</span> (ID: {product.farmer_id})
+        </p>
+        <p className="text-xs text-gray-500 mb-1 truncate">
+          Location: <span className="font-semibold">{product.location || "N/A"}</span>
+        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-green-600 font-bold text-sm">Rs {product.price}</p>
+          <p className="text-xs text-gray-500">Stock: {product.available_stock}</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <input
+            type="number"
+            min={product.min_order_qty || 1}
+            max={product.available_stock}
+            value={quantity}
+            onChange={handleQuantityChange}
+            className="w-16 border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+          />
+          <button
+            onClick={handleAddToCart}
+            className="bg-green-600 text-white text-xs font-semibold py-1 px-2 rounded hover:bg-green-700 transition"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   );
 };
+
 export default Dashboard;
