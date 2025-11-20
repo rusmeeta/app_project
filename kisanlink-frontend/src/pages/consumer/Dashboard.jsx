@@ -179,7 +179,7 @@ const Dashboard = () => {
 
         {/* Product Grid */}
         <main className="flex-1 p-6 overflow-y-auto">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6">Available Products Near You</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Products Near You</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.length === 0 ? (
               <p className="text-gray-500 col-span-full">No products available nearby.</p>
@@ -235,7 +235,7 @@ const ProductCard = ({ product, addToCart }) => {
           Location: <span className="font-semibold">{product.location || "N/A"}</span>
         </p>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-green-600 font-bold text-sm">Rs {product.price}</p>
+          <p className="text-green-600 font-bold text-sm">Rs {product.price} per kg</p>
           <p className="text-xs text-gray-500">Stock: {product.available_stock}</p>
         </div>
         <div className="flex items-center justify-between">
