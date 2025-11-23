@@ -1,5 +1,4 @@
-// src/pages/consumer/Dashboard.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { User, ShoppingCart, MessageCircle } from "lucide-react";
 
@@ -7,9 +6,7 @@ const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [toast, setToast] = useState(""); // Toast message
+  const [toast, setToast] = useState("");
 
   // Load user from localStorage
   useEffect(() => {
@@ -17,81 +14,54 @@ const Dashboard = () => {
     if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
-  // Fetch products from backend
-  const fetchProducts = useCallback(async () => {
+  // Fetch products
+  useEffect(() => {
     if (!user) return;
 
-    try {
-      const res = await fetch("http://localhost:5001/products/farmer-items");
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data = await res.json();
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(`http://localhost:5001/products/farmer-items`);
+        if (!res.ok) throw new Error("Failed to fetch products");
+        const data = await res.json();
 
-      const withDistance = data.map((item) => ({
-        ...item,
-        distance:
-          user.latitude &&
-          user.longitude &&
-          item.latitude &&
-          item.longitude
-            ? getDistanceFromLatLonInKm(
-                parseFloat(user.latitude),
-                parseFloat(user.longitude),
-                parseFloat(item.latitude),
-                parseFloat(item.longitude)
-              ).toFixed(2)
-            : null,
-      }));
+        // Calculate distance for each product
+        const withDistance = data.map((item) => ({
+          ...item,
+          distance:
+            user.latitude && user.longitude && item.farmer_lat && item.farmer_lon
+              ? getDistanceFromLatLonInKm(
+                  parseFloat(user.latitude),
+                  parseFloat(user.longitude),
+                  parseFloat(item.farmer_lat),
+                  parseFloat(item.farmer_lon)
+                ).toFixed(2)
+              : null
+        }));
 
-      withDistance.sort(
-        (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
-      );
-      setProducts(withDistance);
-    } catch (err) {
-      console.error("Failed to fetch products:", err);
-      setProducts([]);
-    }
+        withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+        setProducts(withDistance);
+      } catch (err) {
+        console.error(err);
+        setProducts([]);
+      }
+    };
+
+    fetchProducts();
   }, [user]);
 
-  // Load cart from localStorage
-  const fetchCart = () => {
+  // Load cart
+  useEffect(() => {
     const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
     setCart(storedCart);
-  };
+  }, []);
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("http://localhost:5001/notifications");
-      if (!res.ok) return setNotifications([]);
-      const data = await res.json();
-      setNotifications(data || []);
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-    }
-  };
-
-  // Add product to cart
   const addToCart = (product) => {
     const newCart = [...cart, product];
     setCart(newCart);
     localStorage.setItem("cart", JSON.stringify(newCart));
-
-    // Show toast
     setToast(`"${product.item_name}" added to cart`);
-    setTimeout(() => setToast(""), 2000); // Hide after 2s
+    setTimeout(() => setToast(""), 2000);
   };
-
-  useEffect(() => {
-    if (user) {
-      fetchProducts();
-      fetchCart();
-      fetchNotifications();
-    }
-  }, [user, fetchProducts]);
-
-  const filteredProducts = products.filter((product) =>
-    product.item_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
@@ -111,7 +81,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-50 bg-white shadow-lg p-6 flex flex-col">
+      <aside className="w-64 bg-white shadow-lg p-6 flex flex-col">
         <div className="mb-8 text-center">
           <div className="h-20 w-20 mx-auto rounded-full bg-green-500 text-white flex items-center justify-center text-3xl font-bold shadow-lg">
             {user ? user.fullname[0] : "C"}
@@ -125,11 +95,11 @@ const Dashboard = () => {
         </div>
 
         <nav className="flex-1 space-y-2">
-          <Link to="/consumer/dashboard" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md">Products</Link>
-          <Link to="/consumer/cart" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md">Cart ({cart.length})</Link>
-          <Link to="/consumer/messages" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md">Messages</Link>
+          <Link to="/consumer/dashboard" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Products</Link>
+          <Link to="/consumer/cart" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Cart ({cart.length})</Link>
+          <Link to="/consumer/messages" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Messages</Link>
           <button
-            className="w-full text-left px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-100 hover:shadow-md mt-auto"
+            className="w-full text-left px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-100 hover:shadow-md mt-auto transition"
             onClick={() => {
               localStorage.removeItem("user");
               localStorage.removeItem("cart");
@@ -143,7 +113,6 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative">
-        {/* Toast Notification */}
         {toast && (
           <div className="fixed top-5 right-5 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 animate-slide-in">
             {toast}
@@ -156,19 +125,20 @@ const Dashboard = () => {
             <input
               type="text"
               placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
           <div className="flex items-center space-x-4">
             <Link to="/consumer/cart" className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 cursor-pointer" />
-              {cart.length > 0 && <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">{cart.length}</span>}
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
+                  {cart.length}
+                </span>
+              )}
             </Link>
             <Link to="/consumer/messages" className="relative">
               <MessageCircle className="w-6 h-6 text-gray-700 cursor-pointer" />
-              {notifications.length > 0 && <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">{notifications.length}</span>}
             </Link>
             <div className="flex items-center space-x-2 cursor-pointer">
               <User className="w-6 h-6 text-gray-700" />
@@ -177,14 +147,13 @@ const Dashboard = () => {
           </div>
         </header>
 
-        {/* Product Grid */}
         <main className="flex-1 p-6 overflow-y-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Products Near You</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.length === 0 ? (
+            {products.length === 0 ? (
               <p className="text-gray-500 col-span-full">No products available nearby.</p>
             ) : (
-              filteredProducts.map((product) => (
+              products.map((product) => (
                 <ProductCard key={product.id} product={product} addToCart={addToCart} />
               ))
             )}
@@ -195,9 +164,9 @@ const Dashboard = () => {
   );
 };
 
-// Product Card component
+// Product Card
 const ProductCard = ({ product, addToCart }) => {
-  const [quantity, setQuantity] = useState(product.min_order_qty || 1);
+  const [quantity, setQuantity] = React.useState(product.min_order_qty || 1);
 
   const handleQuantityChange = (e) => {
     let val = Number(e.target.value);
@@ -215,29 +184,30 @@ const ProductCard = ({ product, addToCart }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-lg hover:scale-105 transform transition duration-200 flex flex-col overflow-hidden relative">
-      <img
-        src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
-        alt={product.item_name}
-        className="h-32 w-full object-cover"
-      />
-      {product.available_stock <= 5 && (
-        <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
-          Low Stock
-        </span>
-      )}
-      <div className="p-3 flex-1 flex flex-col justify-between">
-        <h3 className="text-md font-semibold text-gray-800 truncate">{product.item_name}</h3>
-        <p className="text-xs text-gray-600 truncate">
-          Farmer: <span className="font-semibold">{product.farmer_name}</span> (ID: {product.farmer_id})
-        </p>
-        <p className="text-xs text-gray-500 mb-1 truncate">
-          Location: <span className="font-semibold">{product.location || "N/A"}</span>
-        </p>
+    <div className="bg-white rounded-2xl shadow-md hover:shadow-xl hover:scale-105 transform transition duration-300 overflow-hidden relative group">
+      <div className="relative h-40">
+        <img
+          src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
+          alt={product.item_name}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+        />
+        {product.available_stock <= 5 && (
+          <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full font-semibold shadow-lg">
+            Low Stock
+          </span>
+        )}
+      </div>
+      <div className="p-4 flex-1 flex flex-col justify-between">
+        <h3 className="text-lg font-bold text-gray-800 truncate">{product.item_name}</h3>
+        <p className="text-sm text-gray-600 truncate">Farmer: <span className="font-semibold">{product.farmer_name}</span></p>
+        <p className="text-xs text-gray-500 mb-1 truncate">Location: <span className="font-semibold">{product.location || "N/A"}</span></p>
+        <p className="text-xs text-gray-500 mb-2">Distance: {product.distance ? `${product.distance} km` : "Not available"}</p>
+
         <div className="flex items-center justify-between mb-2">
-          <p className="text-green-600 font-bold text-sm">Rs {product.price} per kg</p>
+          <p className="text-green-600 font-bold text-sm">Rs {product.price} / kg</p>
           <p className="text-xs text-gray-500">Stock: {product.available_stock}</p>
         </div>
+
         <div className="flex items-center justify-between">
           <input
             type="number"
@@ -245,11 +215,11 @@ const ProductCard = ({ product, addToCart }) => {
             max={product.available_stock}
             value={quantity}
             onChange={handleQuantityChange}
-            className="w-16 border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+            className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
           />
           <button
             onClick={handleAddToCart}
-            className="bg-green-600 text-white text-xs font-semibold py-1 px-2 rounded hover:bg-green-700 transition"
+            className="bg-green-600 text-white text-sm font-semibold py-1 px-3 rounded hover:bg-green-700 transition"
           >
             Add
           </button>

@@ -1,130 +1,194 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-function AddProduct() {
-  const [formData, setFormData] = useState({
+/**
+ * AddProduct component:
+ * Allows farmers to add products directly tied to their backend session.
+ */
+const AddProduct = () => {
+  const [form, setForm] = useState({
     item_name: "",
     price: "",
     location: "",
-    min_order_qty: "",
-    available_stock: "",
-    photo: null,
+    min_order_qty: 1,
+    available_stock: 1,
   });
 
-  const farmer_id = localStorage.getItem("farmer_id"); // get farmer id from login
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [message, setMessage] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (files) {
-      setFormData({ ...formData, [name]: files[0] }); // store file
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+  // Get farmer info from backend session
+  const [farmer, setFarmer] = useState(null);
+
+  useEffect(() => {
+    const fetchFarmer = async () => {
+      try {
+        const res = await axios.get("http://localhost:5001/farmer/me", {
+          withCredentials: true,
+        });
+        setFarmer(res.data);
+      } catch (err) {
+        console.error("Error fetching farmer info:", err);
+      }
+    };
+    fetchFarmer();
+  }, []);
+
+  // Preview image before upload
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    setPhoto(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
   };
 
+  // Update form state
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Submit new product to backend
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate all fields
-    if (!formData.item_name || !formData.price || !formData.min_order_qty || !formData.available_stock || !formData.location || !formData.photo) {
-      alert("Please fill all fields");
+    if (!farmer) {
+      alert("Unable to fetch farmer info. Try reloading the page.");
+      return;
+    }
+    if (!photo) {
+      alert("Please select a product image");
       return;
     }
 
     try {
-      const payload = new FormData();
-      payload.append("farmer_id", farmer_id);
-      payload.append("item_name", formData.item_name);
-      payload.append("price", parseInt(formData.price));
-      payload.append("location", formData.location);
-      payload.append("min_order_qty", parseInt(formData.min_order_qty));
-      payload.append("available_stock", parseInt(formData.available_stock));
-      payload.append("photo", formData.photo);
+      const formData = new FormData();
+      formData.append("item_name", form.item_name);
+      formData.append("price", form.price);
+      formData.append("location", form.location); // free-text location
+      formData.append("min_order_qty", form.min_order_qty);
+      formData.append("available_stock", form.available_stock);
+      formData.append("photo", photo);
 
-      const res = await axios.post("http://localhost:5001/farmer/add-product", payload, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await axios.post(
+        "http://localhost:5001/farmer/add-product",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" }, withCredentials: true }
+      );
+
+      setMessage(res.data.message);
+
+      // Reset form
+      setForm({
+        item_name: "",
+        price: "",
+        location: "",
+        min_order_qty: 1,
+        available_stock: 1,
       });
+      setPhoto(null);
+      setPreview(null);
 
-      if (res.data.message) {
-        alert(res.data.message);
-        // Clear form
-        setFormData({
-          item_name: "",
-          price: "",
-          location: "",
-          min_order_qty: "",
-          available_stock: "",
-          photo: null,
-        });
-      }
-    } catch (error) {
-      console.error("Add product error:", error.response?.data || error.message);
-      alert(error.response?.data?.error || "Server error, please check your backend");
+    } catch (err) {
+      console.error(err);
+      setMessage(err.response?.data?.error || "Failed to add product");
     }
   };
 
   return (
-    <div style={styles.container}>
-      <h2 ><b>Add Product</b></h2>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <input
-          type="text"
-          name="item_name"
-          placeholder="Item Name"
-          value={formData.item_name}
-          onChange={handleChange}
-          style={styles.input}
-        />
-        <input
-          type="number"
-          name="price"
-          placeholder="Price"
-          value={formData.price}
-          onChange={handleChange}
-          style={styles.input}
-        />
-        <input
-          type="text"
-          name="location"
-          placeholder="Location"
-          value={formData.location}
-          onChange={handleChange}
-          style={styles.input}
-        />
-        <input
-          type="number"
-          name="min_order_qty"
-          placeholder="Minimum Order Quantity"
-          value={formData.min_order_qty}
-          onChange={handleChange}
-          style={styles.input}
-        />
-        <input
-          type="number"
-          name="available_stock"
-          placeholder="Available Stock"
-          value={formData.available_stock}
-          onChange={handleChange}
-          style={styles.input}
-        />
-        <input
-          type="file"
-          name="photo"
-          accept="image/*"
-          onChange={handleChange}
-          style={styles.input}
-        />
-        <button type="submit" style={styles.button}>Add Product</button>
+    <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-md">
+      <h2 className="text-2xl font-bold text-green-700 mb-4">Add New Product</h2>
+      {message && <p className="text-green-600 font-semibold mb-4">{message}</p>}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block font-semibold text-gray-700 mb-1">Product Name</label>
+          <input
+            type="text"
+            name="item_name"
+            value={form.item_name}
+            onChange={handleChange}
+            required
+            placeholder="Enter product name"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Price (Rs / kg)</label>
+            <input
+              type="number"
+              name="price"
+              value={form.price}
+              onChange={handleChange}
+              required
+              placeholder="0.0"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Location</label>
+            {/* Free-text input for specific location */}
+            <input
+              type="text"
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              required
+              placeholder="e.g., Gatthaghar near BigMart"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Min Order Qty</label>
+            <input
+              type="number"
+              name="min_order_qty"
+              value={form.min_order_qty}
+              min={1}
+              onChange={handleChange}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Available Stock</label>
+            <input
+              type="number"
+              name="available_stock"
+              value={form.available_stock}
+              min={1}
+              onChange={handleChange}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block font-semibold text-gray-700 mb-1">Product Image</label>
+          <input type="file" onChange={handlePhotoChange} accept="image/*" className="mb-2" />
+          {preview && (
+            <img
+              src={preview}
+              alt="preview"
+              className="w-32 h-32 object-cover rounded shadow"
+            />
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="bg-green-600 text-white font-bold px-6 py-2 rounded hover:bg-green-700 transition"
+        >
+          Add Product
+        </button>
       </form>
     </div>
   );
-}
-
-const styles = {
-  container: { width: "400px", margin: "auto", marginTop: "40px", padding: "20px", borderRadius: "10px", backgroundColor: "white", boxShadow: "0 0 10px rgba(0,0,0,0.1)" },
-  form: { display: "flex", flexDirection: "column" },
-  input: { margin: "10px 0", padding: "10px", borderRadius: "5px", border: "1px solid #ccc" },
-  button: { backgroundColor: "#28a745", color: "white", padding: "10px", borderRadius: "5px", border: "none", cursor: "pointer", marginTop: "10px" },
 };
 
 export default AddProduct;

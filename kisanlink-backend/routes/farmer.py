@@ -1,17 +1,21 @@
 import os
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, request, jsonify, send_from_directory, session
 from werkzeug.utils import secure_filename
 from db import get_db_connection
 
+# Create a Flask blueprint for farmer-related routes
 farmer_bp = Blueprint("farmer", __name__)
 
+# Directory where uploaded product images will be stored
 UPLOAD_FOLDER = "uploads"
+# Allowed file extensions for uploaded images
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
+# Create the uploads folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Map location names to coordinates
+# Mapping human-readable location names to latitude/longitude
 location_coords = {
     "Naya Thimi": (27.6943, 85.3347),
     "Gatthaghar": (27.6739136, 85.3739132),
@@ -19,38 +23,93 @@ location_coords = {
     "Lokanthali": (27.6740, 85.3450),
 }
 
+# Helper function to check if uploaded file has allowed extension
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Serve uploaded images
+# Serve uploaded images from the server
 @farmer_bp.route("/uploads/<filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# Add product
+# ------------------ Farmer Info ------------------
+@farmer_bp.route("/me", methods=["GET"])
+def get_farmer_info():
+    """
+    Get the currently logged-in farmer's details
+    """
+    try:
+        farmer_id = session.get("user_id")  # Get user ID from session
+        if not farmer_id:
+            return jsonify({"error": "Not logged in"}), 401
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Fetch farmer details from users table
+        cur.execute("""
+            SELECT id, fullname, email, location, latitude, longitude, user_type
+            FROM users
+            WHERE id=%s
+        """, (farmer_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not row:
+            return jsonify({"error": "Farmer not found"}), 404
+
+        # Convert row to dict
+        farmer = {
+            "id": row[0],
+            "fullname": row[1],
+            "email": row[2],
+            "location": row[3],
+            "latitude": row[4],
+            "longitude": row[5],
+            "user_type": row[6]
+        }
+
+        return jsonify(farmer), 200
+
+    except Exception as e:
+        print("ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+# ------------------ Add Product ------------------
 @farmer_bp.route("/add-product", methods=["POST"])
 def add_product():
+    """
+    Add a new product for the logged-in farmer
+    """
     try:
+        farmer_id = session.get("user_id")
+        if not farmer_id:
+            return jsonify({"error": "Not logged in"}), 401
+
+        # Get product data from form-data
         item_name = request.form.get("item_name")
         price = float(request.form.get("price"))
         location = request.form.get("location")
         min_order_qty = int(request.form.get("min_order_qty"))
         available_stock = int(request.form.get("available_stock"))
-        farmer_id = int(request.form.get("farmer_id"))
         photo = request.files.get("photo")
 
-        if not all([item_name, price, location, min_order_qty, available_stock, farmer_id, photo]):
+        # Validate all fields
+        if not all([item_name, price, location, min_order_qty, available_stock, photo]):
             return jsonify({"error": "All fields including photo are required"}), 400
 
+        # Validate file type
         if not allowed_file(photo.filename):
             return jsonify({"error": "Invalid file type"}), 400
 
+        # Secure filename and save photo
         filename = secure_filename(photo.filename)
         photo.save(os.path.join(UPLOAD_FOLDER, filename))
 
-        # Get latitude & longitude from location
+        # Get coordinates from location
         latitude, longitude = location_coords.get(location, (None, None))
 
+        # Insert product into database
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
@@ -68,10 +127,17 @@ def add_product():
         print("ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
-# Get products for a farmer
-@farmer_bp.route("/products/<int:farmer_id>", methods=["GET"])
-def get_products(farmer_id):
+# ------------------ Get Products ------------------
+@farmer_bp.route("/products", methods=["GET"])
+def get_products():
+    """
+    Get all products for the logged-in farmer
+    """
     try:
+        farmer_id = session.get("user_id")
+        if not farmer_id:
+            return jsonify({"error": "Not logged in"}), 401
+
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
@@ -83,6 +149,7 @@ def get_products(farmer_id):
         cur.close()
         conn.close()
 
+        # Convert rows to list of dicts
         products = [
             {
                 "id": r[0],
@@ -102,53 +169,47 @@ def get_products(farmer_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Delete product
-@farmer_bp.route("/delete-product/<int:product_id>", methods=["DELETE"])
-def delete_product(product_id):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM farmer_items WHERE id=%s", (product_id,))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"message": "Product deleted successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Update product
+# ------------------ Update Product ------------------
 @farmer_bp.route("/update-product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
+    """
+    Update a product for the logged-in farmer
+    """
     try:
+        farmer_id = session.get("user_id")
+        if not farmer_id:
+            return jsonify({"error": "Not logged in"}), 401
+
         conn = get_db_connection()
         cur = conn.cursor()
-
-        # Fetch existing product
-        cur.execute("SELECT * FROM farmer_items WHERE id=%s", (product_id,))
+        # Fetch product to check ownership
+        cur.execute("SELECT farmer_id, photo_path FROM farmer_items WHERE id=%s", (product_id,))
         product = cur.fetchone()
         if not product:
             return jsonify({"error": "Product not found"}), 404
+        if product[0] != farmer_id:
+            return jsonify({"error": "Unauthorized"}), 403
 
-        # Form data
+        # Get updated fields
         item_name = request.form.get("item_name")
         price = float(request.form.get("price"))
         location = request.form.get("location")
         min_order_qty = int(request.form.get("min_order_qty"))
         available_stock = int(request.form.get("available_stock"))
 
-        # Handle photo
-        old_photo_filename = product[4]  # existing photo_path
+        old_photo = product[1]
         photo = request.files.get("photo")
+        # Save new photo if uploaded, else keep old
         if photo and allowed_file(photo.filename):
             filename = secure_filename(photo.filename)
             photo.save(os.path.join(UPLOAD_FOLDER, filename))
             photo_to_save = filename
         else:
-            photo_to_save = old_photo_filename
+            photo_to_save = old_photo
 
-        # Get latitude & longitude from location
         latitude, longitude = location_coords.get(location, (None, None))
 
+        # Update product in database
         cur.execute("""
             UPDATE farmer_items
             SET item_name=%s, price=%s, location=%s, min_order_qty=%s, available_stock=%s, photo_path=%s, latitude=%s, longitude=%s
@@ -158,8 +219,41 @@ def update_product(product_id):
         conn.commit()
         cur.close()
         conn.close()
+
         return jsonify({"message": "Product updated successfully"}), 200
 
     except Exception as e:
         print("ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+# ------------------ Delete Product ------------------
+@farmer_bp.route("/delete-product/<int:product_id>", methods=["DELETE"])
+def delete_product(product_id):
+    """
+    Delete a product for the logged-in farmer
+    """
+    try:
+        farmer_id = session.get("user_id")
+        if not farmer_id:
+            return jsonify({"error": "Not logged in"}), 401
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Check ownership
+        cur.execute("SELECT farmer_id FROM farmer_items WHERE id=%s", (product_id,))
+        product = cur.fetchone()
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
+        if product[0] != farmer_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Delete product
+        cur.execute("DELETE FROM farmer_items WHERE id=%s", (product_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Product deleted successfully"}), 200
+
+    except Exception as e:
         return jsonify({"error": str(e)}), 500

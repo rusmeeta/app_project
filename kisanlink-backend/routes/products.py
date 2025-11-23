@@ -1,4 +1,3 @@
-# routes/products.py
 from flask import Blueprint, jsonify
 from db import get_db_connection
 
@@ -8,9 +7,14 @@ products_bp = Blueprint("products_bp", __name__)
 def get_farmer_items():
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # Join farmer_items with users table to get farmer name and coordinates
     cur.execute("""
-        SELECT id, farmer_id, item_name, price, photo_path, location, min_order_qty, available_stock, latitude, longitude
-        FROM farmer_items
+        SELECT fi.id, fi.farmer_id, fi.item_name, fi.price, fi.photo_path, fi.location,
+               fi.min_order_qty, fi.available_stock,
+               u.fullname AS farmer_name, u.latitude AS farmer_lat, u.longitude AS farmer_lon
+        FROM farmer_items fi
+        JOIN users u ON u.id = fi.farmer_id
     """)
     rows = cur.fetchall()
     cur.close()
@@ -27,7 +31,8 @@ def get_farmer_items():
             "location": row[5],
             "min_order_qty": row[6],
             "available_stock": row[7],
-            "latitude": row[8],
-            "longitude": row[9]
+            "farmer_name": row[8],
+            "farmer_lat": row[9],
+            "farmer_lon": row[10]
         })
     return jsonify(items)

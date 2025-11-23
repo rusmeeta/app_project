@@ -1,46 +1,74 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   PieChart, Pie, Cell, Legend
 } from "recharts";
 
-function Report({ farmerId }) {
-  const [summary, setSummary] = useState({
-    totalRevenue: 0,
-    totalOrders: 0,
-    mostSoldProduct: "N/A",
-    lowStock: 0
-  });
+/**
+ * Report component
+ * Fetches and displays real-time farmer report data including:
+ * 1. Summary (Revenue, Orders, Most Sold Product, Low Stock)
+ * 2. Sales trend chart
+ * 3. Revenue breakdown pie chart
+ * 4. Inventory status table
+ */
+function Report() {
+  const [farmerId, setFarmerId] = useState(null); // farmer ID from session
+  const [summary, setSummary] = useState({});
   const [salesData, setSalesData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const COLORS = ["#2E7D32", "#66BB6A", "#43A047", "#81C784", "#1B5E20", "#A5D6A7"];
+
+  // Fetch farmer ID from session backend
+  useEffect(() => {
+    const fetchFarmer = async () => {
+      try {
+        const res = await axios.get("http://localhost:5001/farmer/me", {
+          withCredentials: true
+        });
+        setFarmerId(res.data.id);
+      } catch (err) {
+        console.error("Failed to fetch farmer info:", err);
+        setError("Unable to fetch farmer info");
+        setLoading(false);
+      }
+    };
+    fetchFarmer();
+  }, []);
+
+  // Fetch report data once farmerId is available
   useEffect(() => {
     if (!farmerId) return;
 
-    fetch(`http://localhost:5001/api/farmer/report/${farmerId}`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch report data");
-        return res.json();
-      })
-      .then(data => {
-        setSummary(data.summary || summary);
+    const fetchReport = async () => {
+      try {
+        const res = await axios.get(`http://localhost:5001/api/farmer/report/${farmerId}`, {
+          withCredentials: true
+        });
+        const data = res.data;
+
+        // Set state with actual backend data
+        setSummary(data.summary || {});
         setSalesData(data.salesTrend || []);
         setRevenueData(data.revenueBreakdown || []);
         setInventory(data.inventoryTable || []);
         setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setError(err.message);
+      } catch (err) {
+        console.error("Failed to fetch report:", err);
+        setError("Failed to load report data");
         setLoading(false);
-      });
+      }
+    };
+
+    fetchReport();
   }, [farmerId]);
 
-  const COLORS = ["#2E7D32", "#66BB6A", "#43A047", "#81C784"];
-
+  // Open PDF in new tab
   const downloadPDF = () => {
     if (!farmerId) return;
     window.open(`http://localhost:5001/api/farmer/report/pdf/${farmerId}`, "_blank");
@@ -51,6 +79,7 @@ function Report({ farmerId }) {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
+      {/* Summary Section */}
       <h2 className="text-2xl font-semibold mb-4">Report Summary</h2>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         <div className="bg-white p-5 rounded-xl shadow">
@@ -71,8 +100,10 @@ function Report({ farmerId }) {
         </div>
       </div>
 
+      {/* Analytics Section */}
       <h2 className="text-2xl font-semibold mt-10 mb-4">Analytics</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Sales Trend Chart */}
         <div className="bg-white p-5 rounded-xl shadow">
           <h3 className="text-lg font-medium mb-3">Sales Trend</h3>
           {salesData.length > 0 ? (
@@ -87,6 +118,7 @@ function Report({ farmerId }) {
           )}
         </div>
 
+        {/* Revenue Breakdown Pie Chart */}
         <div className="bg-white p-5 rounded-xl shadow">
           <h3 className="text-lg font-medium mb-3">Revenue Breakdown</h3>
           {revenueData.length > 0 ? (
@@ -111,6 +143,7 @@ function Report({ farmerId }) {
         </div>
       </div>
 
+      {/* Inventory Table */}
       <h2 className="text-2xl font-semibold mt-10 mb-4">Inventory Status</h2>
       <div className="bg-white p-5 rounded-xl shadow overflow-x-auto">
         {inventory.length > 0 ? (
@@ -139,6 +172,7 @@ function Report({ farmerId }) {
         )}
       </div>
 
+      {/* PDF Download Button */}
       <div className="mt-8 flex justify-end">
         <button
           onClick={downloadPDF}

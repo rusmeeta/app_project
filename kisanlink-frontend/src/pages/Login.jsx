@@ -1,45 +1,60 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../api/auth"; // adjust path to your auth.js
 
+// Login component for KisanLink
 function Login() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // React Router hook to navigate programmatically
+
+  // State for form inputs
   const [formData, setFormData] = useState({ email: "", password: "" });
+  // State for displaying errors
   const [error, setError] = useState("");
 
+  // Update formData state on input change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault(); // Prevent page reload
+    setError(""); // Reset previous error
 
     try {
-      const data = await login(formData);
+      // Call backend login API using fetch (Flask session will be set)
+      const response = await fetch("http://localhost:5001/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include", // Important: send cookies for session
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
       console.log("Backend response:", data);
 
-      const user = data.user || data; // handle different backend structures
-      const userType = user.user_type || user.userType;
-
+      // Check if login was successful
       if (data.status === "success") {
-        // Save user info
-        localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("user_id", user.id);
+        const userType = data.user_type; // Get user type from backend
 
-        // Redirect based on user type
+        // Redirect user based on user type
         if (userType === "farmer") {
           navigate("/farmer/dashboard");
         } else if (userType === "consumer") {
-          navigate("/consumer/dashboard"); // make sure this route exists
+          navigate("/consumer/dashboard");
+        } else if (userType === "admin") {
+          navigate("/admin/dashboard");
         } else {
+          // Unknown user type returned
           setError("Unknown user type");
         }
       } else {
+        // Login failed, display backend error
         setError(data.message || "Login failed");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
       setError("Login failed. Please try again.");
     }
   };
@@ -47,10 +62,14 @@ function Login() {
   return (
     <div className="flex justify-center items-center min-h-screen bg-green-50 px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+        {/* Login title */}
         <h2 className="text-3xl font-bold text-green-700 mb-6 text-center">
           Login
         </h2>
+
+        {/* Login form */}
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email input */}
           <div>
             <label className="block text-sm font-semibold text-gray-700">
               Email
@@ -65,6 +84,8 @@ function Login() {
               placeholder="Your email"
             />
           </div>
+
+          {/* Password input */}
           <div>
             <label className="block text-sm font-semibold text-gray-700">
               Password
@@ -79,6 +100,8 @@ function Login() {
               placeholder="Your password"
             />
           </div>
+
+          {/* Submit button */}
           <button
             type="submit"
             className="w-full bg-green-600 text-white font-semibold py-3 rounded-md hover:bg-green-700 transition"
@@ -86,7 +109,11 @@ function Login() {
             Login
           </button>
         </form>
+
+        {/* Display error message if any */}
         {error && <p className="mt-4 text-red-600">{error}</p>}
+
+        {/* Signup link */}
         <p className="mt-6 text-center text-gray-600">
           Don't have an account?{" "}
           <a
