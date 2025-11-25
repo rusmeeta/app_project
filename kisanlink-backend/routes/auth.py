@@ -168,6 +168,20 @@ def logout_api():
 # -----------------------------
 # GET CURRENT USER API
 # -----------------------------
+# @auth_bp.route('/me', methods=['GET'])
+# def me_api():
+#     """
+#     Returns the current logged-in user
+#     Can be used by frontend to check if user is authenticated
+#     """
+#     if 'user_id' not in session:
+#         return {"authenticated": False}, 401
+
+#     return {
+#         "authenticated": True,
+#         "user_id": session['user_id'],
+#         "user_type": session['user_type']
+#     }
 @auth_bp.route('/me', methods=['GET'])
 def me_api():
     """
@@ -177,8 +191,29 @@ def me_api():
     if 'user_id' not in session:
         return {"authenticated": False}, 401
 
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id, fullname, email, user_type, location, latitude, longitude FROM users WHERE id=%s",
+        (session['user_id'],)
+    )
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not user:
+        return {"authenticated": False}, 401
+
+    user_id, fullname, email, user_type, location, latitude, longitude = user
+
     return {
         "authenticated": True,
-        "user_id": session['user_id'],
-        "user_type": session['user_type']
+        "user_id": user_id,
+        "fullname": fullname,
+        "email": email,
+        "user_type": user_type,
+        "location": location,
+        "latitude": latitude,
+        "longitude": longitude
     }

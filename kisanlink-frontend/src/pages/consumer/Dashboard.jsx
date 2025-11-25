@@ -8,37 +8,64 @@ const Dashboard = () => {
   const [cart, setCart] = useState([]);
   const [toast, setToast] = useState("");
 
-  // Load user from localStorage
+  // -----------------------------
+  // Fetch logged-in user from API
+  // -----------------------------
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) setUser(JSON.parse(storedUser));
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("http://localhost:5001/auth/me", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("User not authenticated");
+        const data = await res.json();
+        setUser(data);
+      } catch (err) {
+        console.error(err);
+        window.location.href = "/login"; // redirect to login if not authenticated
+      }
+    };
+    fetchUser();
   }, []);
 
-  // Fetch products
+  // -----------------------------
+  // Fetch products from API
+  // -----------------------------
   useEffect(() => {
     if (!user) return;
 
     const fetchProducts = async () => {
       try {
-        const res = await fetch(`http://localhost:5001/products/farmer-items`);
+        const res = await fetch("http://localhost:5001/products/farmer-items", {
+          credentials: "include",
+        });
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
 
-        // Calculate distance for each product
-        const withDistance = data.map((item) => ({
-          ...item,
-          distance:
-            user.latitude && user.longitude && item.farmer_lat && item.farmer_lon
-              ? getDistanceFromLatLonInKm(
-                  parseFloat(user.latitude),
-                  parseFloat(user.longitude),
-                  parseFloat(item.farmer_lat),
-                  parseFloat(item.farmer_lon)
-                ).toFixed(2)
-              : null
-        }));
+        // Calculate distance safely
+        const withDistance = data.map((item) => {
+          const uLat = parseFloat(user.latitude);
+          const uLon = parseFloat(user.longitude);
+          const fLat = parseFloat(item.farmer_lat);
+          const fLon = parseFloat(item.farmer_lon);
 
-        withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+          const distance =
+            !isNaN(uLat) && !isNaN(uLon) && !isNaN(fLat) && !isNaN(fLon)
+              ? getDistanceFromLatLonInKm(uLat, uLon, fLat, fLon).toFixed(2)
+              : null;
+
+          return { ...item, distance };
+        });
+
+        // Sort products by distance, null distances go to the end
+        withDistance.sort((a, b) =>
+          a.distance !== null && b.distance !== null
+            ? a.distance - b.distance
+            : a.distance === null
+            ? 1
+            : -1
+        );
+
         setProducts(withDistance);
       } catch (err) {
         console.error(err);
@@ -49,16 +76,16 @@ const Dashboard = () => {
     fetchProducts();
   }, [user]);
 
-  // Load cart
+  // -----------------------------
+  // Load cart from state (or API later)
+  // -----------------------------
   useEffect(() => {
-    const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
-    setCart(storedCart);
+    setCart([]);
   }, []);
 
   const addToCart = (product) => {
     const newCart = [...cart, product];
     setCart(newCart);
-    localStorage.setItem("cart", JSON.stringify(newCart));
     setToast(`"${product.item_name}" added to cart`);
     setTimeout(() => setToast(""), 2000);
   };
@@ -87,22 +114,24 @@ const Dashboard = () => {
             {user ? user.fullname[0] : "C"}
           </div>
           <h2 className="mt-4 text-xl font-bold text-gray-800">{user?.fullname || "Consumer"}</h2>
-          <p className="text-gray-500">{user?.email}</p>
+          <p className="text-gray-500">{user?.email || "user@example.com"}</p>
           <p className="text-gray-400 text-sm mt-1">
-            Member since: {user?.created_at ? new Date(user.created_at).toLocaleDateString() : "2025-01-01"}
+            Location: {user?.location || "N/A"}
           </p>
           <p className="text-gray-500 text-sm mt-2">Cart Items: {cart.length}</p>
         </div>
 
         <nav className="flex-1 space-y-2">
-          <Link to="/consumer/dashboard" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Products</Link>
-          <Link to="/consumer/cart" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Cart ({cart.length})</Link>
-          <Link to="/consumer/messages" className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Messages</Link>
+          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Products</Link>
+          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Cart ({cart.length})</Link>
+          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Messages</Link>
           <button
             className="w-full text-left px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-100 hover:shadow-md mt-auto transition"
-            onClick={() => {
-              localStorage.removeItem("user");
-              localStorage.removeItem("cart");
+            onClick={async () => {
+              await fetch("http://localhost:5001/auth/logout", {
+                method: "POST",
+                credentials: "include",
+              });
               window.location.href = "/login";
             }}
           >
@@ -119,7 +148,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        <header className="bg-white shadow-md p-3 flex items-center justify-between">
+        <header className="bg-white shadow-md p-4 flex items-center justify-between">
           <div className="text-2xl font-bold text-green-600">KisanLink</div>
           <div className="flex-1 mx-6">
             <input
@@ -129,7 +158,7 @@ const Dashboard = () => {
             />
           </div>
           <div className="flex items-center space-x-4">
-            <Link to="/consumer/cart" className="relative">
+            <Link className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 cursor-pointer" />
               {cart.length > 0 && (
                 <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
@@ -137,7 +166,7 @@ const Dashboard = () => {
                 </span>
               )}
             </Link>
-            <Link to="/consumer/messages" className="relative">
+            <Link className="relative">
               <MessageCircle className="w-6 h-6 text-gray-700 cursor-pointer" />
             </Link>
             <div className="flex items-center space-x-2 cursor-pointer">
@@ -184,7 +213,7 @@ const ProductCard = ({ product, addToCart }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-md hover:shadow-xl hover:scale-105 transform transition duration-300 overflow-hidden relative group">
+    <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transform transition duration-300 overflow-hidden relative group">
       <div className="relative h-40">
         <img
           src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
