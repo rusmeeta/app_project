@@ -42,29 +42,26 @@ const Dashboard = () => {
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
 
-        // Calculate distance safely
         const withDistance = data.map((item) => {
           const uLat = parseFloat(user.latitude);
           const uLon = parseFloat(user.longitude);
           const fLat = parseFloat(item.farmer_lat);
           const fLon = parseFloat(item.farmer_lon);
 
-          const distance =
-            !isNaN(uLat) && !isNaN(uLon) && !isNaN(fLat) && !isNaN(fLon)
-              ? getDistanceFromLatLonInKm(uLat, uLon, fLat, fLon).toFixed(2)
-              : null;
+          let distance = "N/A";
+          if (!isNaN(uLat) && !isNaN(uLon) && !isNaN(fLat) && !isNaN(fLon)) {
+            const dist = getDistanceFromLatLonInKm(uLat, uLon, fLat, fLon);
+            distance = dist < 0.05 ? "Nearby" : dist.toFixed(2) + " km";
+          }
 
           return { ...item, distance };
         });
 
-        // Sort products by distance, null distances go to the end
-        withDistance.sort((a, b) =>
-          a.distance !== null && b.distance !== null
-            ? a.distance - b.distance
-            : a.distance === null
-            ? 1
-            : -1
-        );
+        withDistance.sort((a, b) => {
+          if (a.distance === "Nearby") return -1;
+          if (b.distance === "Nearby") return 1;
+          return (parseFloat(a.distance) || Infinity) - (parseFloat(b.distance) || Infinity);
+        });
 
         setProducts(withDistance);
       } catch (err) {
@@ -96,11 +93,10 @@ const Dashboard = () => {
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLat / 2) ** 2 +
       Math.cos(deg2rad(lat1)) *
         Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+        Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -115,16 +111,20 @@ const Dashboard = () => {
           </div>
           <h2 className="mt-4 text-xl font-bold text-gray-800">{user?.fullname || "Consumer"}</h2>
           <p className="text-gray-500">{user?.email || "user@example.com"}</p>
-          <p className="text-gray-400 text-sm mt-1">
-            Location: {user?.location || "N/A"}
-          </p>
+          <p className="text-gray-400 text-sm mt-1">Location: {user?.location || "N/A"}</p>
           <p className="text-gray-500 text-sm mt-2">Cart Items: {cart.length}</p>
         </div>
 
         <nav className="flex-1 space-y-2">
-          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Products</Link>
-          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Cart ({cart.length})</Link>
-          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">Messages</Link>
+          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
+            Products
+          </Link>
+          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
+            Cart ({cart.length})
+          </Link>
+          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
+            Messages
+          </Link>
           <button
             className="w-full text-left px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-100 hover:shadow-md mt-auto transition"
             onClick={async () => {
@@ -230,7 +230,7 @@ const ProductCard = ({ product, addToCart }) => {
         <h3 className="text-lg font-bold text-gray-800 truncate">{product.item_name}</h3>
         <p className="text-sm text-gray-600 truncate">Farmer: <span className="font-semibold">{product.farmer_name}</span></p>
         <p className="text-xs text-gray-500 mb-1 truncate">Location: <span className="font-semibold">{product.location || "N/A"}</span></p>
-        <p className="text-xs text-gray-500 mb-2">Distance: {product.distance ? `${product.distance} km` : "Not available"}</p>
+        <p className="text-xs text-gray-500 mb-2">Distance: <span className="font-semibold">{product.distance}</span></p>
 
         <div className="flex items-center justify-between mb-2">
           <p className="text-green-600 font-bold text-sm">Rs {product.price} / kg</p>
