@@ -8,16 +8,8 @@ cart_bp = Blueprint("cart", __name__)
 
 DELIVERY_PER_FARMER = 50
 
-# -----------------------------
-# Get cart items
-# -----------------------------
-@cart_bp.route("/", methods=["GET"])
-def get_cart_items():
-    if "user_id" not in session:
-        return jsonify({"status": "error", "message": "Not logged in"}), 401
-
-    consumer_id = session["user_id"]
-
+# Helper: get full cart for consumer
+def get_cart_for_consumer(consumer_id):
     items = (
         db.session.query(
             CartItem.id.label("cart_id"),
@@ -26,6 +18,7 @@ def get_cart_items():
             FarmerItem.item_name,
             FarmerItem.price,
             FarmerItem.available_stock,
+            FarmerItem.min_order_qty,
             FarmerItem.photo_path,
             User.fullname.label("farmer_name"),
         )
@@ -34,26 +27,35 @@ def get_cart_items():
         .filter(CartItem.consumer_id == consumer_id)
         .all()
     )
-
-    cart_data = []
-    for i in items:
-        cart_data.append(
-            {
-                "id": i.cart_id,
-                "product_id": i.product_id,
-                "item_name": i.item_name,
-                "farmer_name": i.farmer_name or "Unknown",
-                "price": float(i.price),
-                "available_stock": i.available_stock,
-                "quantity": i.quantity,
-                "photo_path": i.photo_path,
-            }
-        )
-    return jsonify(cart_data)
-
+    return [
+        {
+            "id": i.cart_id,
+            "product_id": i.product_id,
+            "item_name": i.item_name,
+            "farmer_name": i.farmer_name or "Unknown",
+            "price": float(i.price),
+            "available_stock": i.available_stock,
+            "min_order_qty": i.min_order_qty,
+            "quantity": i.quantity,
+            "photo_path": i.photo_path,
+        }
+        for i in items
+    ]
 
 # -----------------------------
-# Add item to cart
+# GET cart items
+# -----------------------------
+@cart_bp.route("/", methods=["GET"])
+def get_cart_items():
+    if "user_id" not in session:
+        return jsonify({"status": "error", "message": "Not logged in"}), 401
+
+    consumer_id = session["user_id"]
+    cart_data = get_cart_for_consumer(consumer_id)
+    return jsonify(cart_data)
+
+# -----------------------------
+# ADD item to cart
 # -----------------------------
 @cart_bp.route("/", methods=["POST"])
 def add_to_cart():
@@ -68,19 +70,35 @@ def add_to_cart():
     if not product_id:
         return jsonify({"status": "error", "message": "Product ID is required"}), 400
 
+    product = FarmerItem.query.get(product_id)
+    if not product:
+        return jsonify({"status": "error", "message": "Product not found"}), 404
+
+    if quantity < product.min_order_qty or quantity > product.available_stock:
+        return jsonify({
+            "status": "error",
+            "message": f"Quantity must be between {product.min_order_qty} and {product.available_stock}"
+        }), 400
+
     item = CartItem.query.filter_by(consumer_id=consumer_id, product_id=product_id).first()
     if item:
-        item.quantity += quantity
+        new_qty = item.quantity + quantity
+        if new_qty > product.available_stock:
+            return jsonify({
+                "status": "error",
+                "message": f"Cannot exceed available stock ({product.available_stock})"
+            }), 400
+        item.quantity = new_qty
     else:
         item = CartItem(consumer_id=consumer_id, product_id=product_id, quantity=quantity)
         db.session.add(item)
 
     db.session.commit()
-    return jsonify({"status": "success", "message": "Item added to cart"})
-
+    cart_data = get_cart_for_consumer(consumer_id)
+    return jsonify({"status": "success", "cart": cart_data})
 
 # -----------------------------
-# Update quantity
+# UPDATE quantity
 # -----------------------------
 @cart_bp.route("/<int:item_id>", methods=["PUT"])
 def update_cart_item(item_id):
@@ -96,13 +114,21 @@ def update_cart_item(item_id):
     if not item or item.consumer_id != session["user_id"]:
         return jsonify({"status": "error", "message": "Item not found"}), 404
 
+    product = FarmerItem.query.get(item.product_id)
+    if quantity < product.min_order_qty or quantity > product.available_stock:
+        return jsonify({
+            "status": "error",
+            "message": f"Quantity must be between {product.min_order_qty} and {product.available_stock}"
+        }), 400
+
     item.quantity = quantity
     db.session.commit()
-    return jsonify({"status": "success", "message": "Quantity updated"})
 
+    cart_data = get_cart_for_consumer(item.consumer_id)
+    return jsonify({"status": "success", "cart": cart_data})
 
 # -----------------------------
-# Remove item
+# REMOVE item
 # -----------------------------
 @cart_bp.route("/<int:item_id>", methods=["DELETE"])
 def remove_cart_item(item_id):
@@ -115,11 +141,12 @@ def remove_cart_item(item_id):
 
     db.session.delete(item)
     db.session.commit()
-    return jsonify({"status": "success", "message": "Item removed"})
 
+    cart_data = get_cart_for_consumer(session["user_id"])
+    return jsonify({"status": "success", "cart": cart_data})
 
 # -----------------------------
-# Checkout
+# CHECKOUT
 # -----------------------------
 @cart_bp.route("/checkout", methods=["POST"])
 def checkout():
