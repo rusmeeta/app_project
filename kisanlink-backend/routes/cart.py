@@ -3,6 +3,7 @@ from extensions import db
 from models_cart import CartItem
 from models_farmer_items import FarmerItem
 from models_user import User
+from models_notification import Notification
 
 cart_bp = Blueprint("cart", __name__)
 
@@ -154,6 +155,61 @@ def checkout():
         return jsonify({"status": "error", "message": "Not logged in"}), 401
 
     consumer_id = session["user_id"]
-    CartItem.query.filter_by(consumer_id=consumer_id).delete()
+    data = request.get_json()
+    item_ids = data.get("item_ids", [])
+
+    if not item_ids:
+        return jsonify({"status": "error", "message": "No items selected"}), 400
+
+    # Fetch only selected items
+    items = (
+        db.session.query(
+            CartItem.id,
+            CartItem.quantity,
+            FarmerItem.item_name,
+            FarmerItem.price,
+            User.fullname.label("farmer_name"),
+            User.id.label("farmer_id")
+        )
+        .join(FarmerItem, CartItem.product_id == FarmerItem.id)
+        .join(User, FarmerItem.farmer_id == User.id)
+        .filter(CartItem.consumer_id == consumer_id, CartItem.id.in_(item_ids))
+        .all()
+    )
+
+    if not items:
+        return jsonify({"status": "error", "message": "No items found"}), 400
+
+    order_summary = []
+    for i in items:
+        order_summary.append({
+            "item_name": i.item_name,
+            "quantity": i.quantity,
+            "price": float(i.price),
+            "farmer_name": i.farmer_name
+        })
+
+        # Notify farmer
+        note = Notification(
+            user_id=i.farmer_id,
+            message=f"{i.quantity} kg of {i.item_name} has been ordered by a consumer."
+        )
+        db.session.add(note)
+
+    # Delete only the ordered cart items
+    CartItem.query.filter(CartItem.consumer_id == consumer_id, CartItem.id.in_(item_ids)).delete(synchronize_session=False)
+    
+    # Notify consumer
+    consumer_note = Notification(
+        user_id=consumer_id,
+        message="Your order has been placed successfully."
+    )
+    db.session.add(consumer_note)
+
     db.session.commit()
-    return jsonify({"status": "success", "message": "Order placed successfully"})
+
+    return jsonify({
+        "status": "success",
+        "message": "Your order has been placed successfully",
+        "order_details": order_summary
+    })

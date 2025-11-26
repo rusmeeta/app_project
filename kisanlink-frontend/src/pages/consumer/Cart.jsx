@@ -76,6 +76,32 @@ const Cart = () => {
     }
   };
 
+  const proceedToCheckout = async () => {
+  if (!window.confirm("Are you sure you want to place the order?")) return;
+
+  const selectedIds = selectedCart.map((i) => i.id); // Only selected items
+  const res = await fetch("http://localhost:5001/cart/checkout", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item_ids: selectedIds }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    alert(
+      `Your order has been placed!\n` +
+        data.order_details.map(
+          (i) => `${i.item_name} - ${i.quantity} kg - Rs ${i.price * i.quantity}`
+        ).join("\n")
+    );
+    fetchCart(); // refresh cart
+  } else {
+    alert(data.message);
+  }
+};
+
+
+
   // Group items by farmer
   const grouped = cart.reduce((acc, item) => {
     acc[item.farmer_name] = acc[item.farmer_name] || [];
@@ -170,9 +196,13 @@ const Cart = () => {
         <p>Subtotal ({selectedCart.length} items): Rs {subtotal}</p>
         <p>Shipping Fee: Rs {shipping}</p>
         <p className="font-bold text-xl">Total: Rs {total}</p>
-        <button className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
-          Proceed to Checkout ({selectedCart.length})
-        </button>
+        <button
+  onClick={proceedToCheckout}
+  className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+>
+  Proceed to Checkout ({selectedCart.length})
+</button>
+
       </div>
     </div>
   );
