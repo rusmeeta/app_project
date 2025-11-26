@@ -161,7 +161,6 @@ def checkout():
     if not item_ids:
         return jsonify({"status": "error", "message": "No items selected"}), 400
 
-    # Fetch only selected items
     items = (
         db.session.query(
             CartItem.id,
@@ -198,14 +197,15 @@ def checkout():
 
     # Delete only the ordered cart items
     CartItem.query.filter(CartItem.consumer_id == consumer_id, CartItem.id.in_(item_ids)).delete(synchronize_session=False)
-    
-    # Notify consumer
+
+    # -----------------------------
+    # Notify consumer with itemized message
+    details = ", ".join([f"{i.quantity} kg of {i.item_name} - Rs {i.quantity * i.price}" for i in items])
     consumer_note = Notification(
         user_id=consumer_id,
-        message="Your order has been placed successfully."
+        message=f"Your order has been placed successfully: {details}"
     )
     db.session.add(consumer_note)
-
     db.session.commit()
 
     return jsonify({
