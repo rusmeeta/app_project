@@ -55,7 +55,7 @@ app.register_blueprint(chat_bp, url_prefix="/chat")
 app.register_blueprint(recommend_bp, url_prefix="/recommend")
 app.register_blueprint(products_bp, url_prefix="/products")
 app.register_blueprint(cart_bp, url_prefix="/cart")
-app.register_blueprint(notifications_bp)
+app.register_blueprint(notifications_bp, url_prefix="/notifications")
 
 # ------------------------------
 # Run app
