@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify, session
 from models_cart import CartItem
-from models_product import Product  # important to get product details
+from models_farmer_items import FarmerItem  # Use FarmerItem model
 from extensions import db
 
 cart_bp = Blueprint("cart", __name__)
 
+# -----------------------------
 # Get cart items
+# -----------------------------
 @cart_bp.route("/", methods=["GET"])
 def get_cart_items():
     if 'user_id' not in session:
@@ -16,21 +18,24 @@ def get_cart_items():
     
     cart_data = []
     for i in items:
-        product = Product.query.get(i.product_id)
+        product = FarmerItem.query.get(i.product_id)  # Use farmer_items table
         if product:
             cart_data.append({
                 "id": i.id,
                 "product_id": i.product_id,
                 "item_name": product.item_name,
-                "farmer_name": product.farmer_name,
-                "price": product.price,
-                "available_stock": product.stock,
+                "farmer_name": getattr(product, "farmer_name", "Unknown"),
+                "price": float(product.price),
+                "available_stock": getattr(product, "available_stock", 0),
                 "quantity": i.quantity,
                 "photo_path": product.photo_path
             })
     return jsonify(cart_data)
 
+
+# -----------------------------
 # Add item to cart
+# -----------------------------
 @cart_bp.route("/", methods=["POST"])
 def add_to_cart():
     if 'user_id' not in session:
@@ -54,7 +59,10 @@ def add_to_cart():
     db.session.commit()
     return jsonify({"status": "success", "message": "Item added to cart"})
 
+
+# -----------------------------
 # Update quantity
+# -----------------------------
 @cart_bp.route("/<int:item_id>", methods=["PUT"])
 def update_cart_item(item_id):
     if 'user_id' not in session:
@@ -73,7 +81,10 @@ def update_cart_item(item_id):
     db.session.commit()
     return jsonify({"status": "success", "message": "Quantity updated"})
 
+
+# -----------------------------
 # Remove item
+# -----------------------------
 @cart_bp.route("/<int:item_id>", methods=["DELETE"])
 def remove_cart_item(item_id):
     if 'user_id' not in session:
@@ -87,7 +98,10 @@ def remove_cart_item(item_id):
     db.session.commit()
     return jsonify({"status": "success", "message": "Item removed"})
 
+
+# -----------------------------
 # Checkout
+# -----------------------------
 @cart_bp.route("/checkout", methods=["POST"])
 def checkout():
     if 'user_id' not in session:

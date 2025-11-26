@@ -8,29 +8,73 @@ const Dashboard = () => {
   const [cart, setCart] = useState([]);
   const [toast, setToast] = useState("");
 
-  // -----------------------------
-  // Fetch logged-in user from API
-  // -----------------------------
+  // -------------------------
+  // Fetch logged-in user
+  // -------------------------
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:5001/auth/me", {
-          credentials: "include",
-        });
+        const res = await fetch("http://localhost:5001/auth/me", { credentials: "include" });
         if (!res.ok) throw new Error("User not authenticated");
         const data = await res.json();
         setUser(data);
       } catch (err) {
         console.error(err);
-        window.location.href = "/login"; // redirect to login if not authenticated
+        window.location.href = "/login";
       }
     };
     fetchUser();
   }, []);
 
-  // -----------------------------
-  // Fetch products from API
-  // -----------------------------
+  // -------------------------
+  // Fetch cart (centralized)
+  // -------------------------
+  const fetchCart = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch("http://localhost:5001/cart/", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch cart");
+      const data = await res.json();
+      setCart(data);
+    } catch (err) {
+      console.error(err);
+      setCart([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchCart();
+  }, [user]);
+
+  // -------------------------
+  // Add item to cart
+  // -------------------------
+  const addToCart = async (product, quantity = 1) => {
+    try {
+      const res = await fetch("http://localhost:5001/cart/", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: product.id, quantity }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setToast(`"${product.item_name}" added to cart`);
+        fetchCart(); // 🔥 Refresh cart instantly
+        setTimeout(() => setToast(""), 2000);
+      } else {
+        alert(data.message || "Failed to add to cart");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error adding to cart");
+    }
+  };
+
+  // -------------------------
+  // Fetch products & distance
+  // -------------------------
   useEffect(() => {
     if (!user) return;
 
@@ -45,8 +89,8 @@ const Dashboard = () => {
         const withDistance = data.map((item) => {
           const uLat = parseFloat(user.latitude);
           const uLon = parseFloat(user.longitude);
-          const fLat = parseFloat(item.farmer_lat);
-          const fLon = parseFloat(item.farmer_lon);
+          const fLat = parseFloat(item.latitude || item.farmer_lat);
+          const fLon = parseFloat(item.longitude || item.farmer_lon);
 
           let distance = "N/A";
           if (!isNaN(uLat) && !isNaN(uLon) && !isNaN(fLat) && !isNaN(fLon)) {
@@ -73,20 +117,6 @@ const Dashboard = () => {
     fetchProducts();
   }, [user]);
 
-  // -----------------------------
-  // Load cart from state (or API later)
-  // -----------------------------
-  useEffect(() => {
-    setCart([]);
-  }, []);
-
-  const addToCart = (product) => {
-    const newCart = [...cart, product];
-    setCart(newCart);
-    setToast(`"${product.item_name}" added to cart`);
-    setTimeout(() => setToast(""), 2000);
-  };
-
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
     const R = 6371;
@@ -101,6 +131,9 @@ const Dashboard = () => {
     return R * c;
   };
 
+  // -------------------------
+  // Render
+  // -------------------------
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
@@ -119,19 +152,22 @@ const Dashboard = () => {
           <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
             Products
           </Link>
-          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
+
+          <Link
+            to="/consumer/cart"
+            className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition"
+          >
             Cart ({cart.length})
           </Link>
+
           <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
             Messages
           </Link>
+
           <button
             className="w-full text-left px-4 py-2 rounded-lg font-semibold text-red-600 hover:bg-red-100 hover:shadow-md mt-auto transition"
             onClick={async () => {
-              await fetch("http://localhost:5001/auth/logout", {
-                method: "POST",
-                credentials: "include",
-              });
+              await fetch("http://localhost:5001/auth/logout", { method: "POST", credentials: "include" });
               window.location.href = "/login";
             }}
           >
@@ -140,7 +176,7 @@ const Dashboard = () => {
         </nav>
       </aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="flex-1 flex flex-col relative">
         {toast && (
           <div className="fixed top-5 right-5 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 animate-slide-in">
@@ -150,6 +186,7 @@ const Dashboard = () => {
 
         <header className="bg-white shadow-md p-4 flex items-center justify-between">
           <div className="text-2xl font-bold text-green-600">KisanLink</div>
+
           <div className="flex-1 mx-6">
             <input
               type="text"
@@ -157,8 +194,9 @@ const Dashboard = () => {
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
+
           <div className="flex items-center space-x-4">
-            <Link className="relative">
+            <Link to="/consumer/cart" className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 cursor-pointer" />
               {cart.length > 0 && (
                 <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
@@ -166,9 +204,11 @@ const Dashboard = () => {
                 </span>
               )}
             </Link>
+
             <Link className="relative">
               <MessageCircle className="w-6 h-6 text-gray-700 cursor-pointer" />
             </Link>
+
             <div className="flex items-center space-x-2 cursor-pointer">
               <User className="w-6 h-6 text-gray-700" />
               <span className="text-gray-700 font-semibold">{user?.fullname}</span>
@@ -179,12 +219,12 @@ const Dashboard = () => {
         <main className="flex-1 p-6 overflow-y-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Products Near You</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.length === 0 ? (
-              <p className="text-gray-500 col-span-full">No products available nearby.</p>
+            {products.filter((p) => p.available_stock > 5).length === 0 ? (
+              <p className="text-gray-500 col-span-full">No products available.</p>
             ) : (
-              products.map((product) => (
-                <ProductCard key={product.id} product={product} addToCart={addToCart} />
-              ))
+              products
+                .filter((product) => product.available_stock > 5)
+                .map((product) => <ProductCard key={product.id} product={product} addToCart={addToCart} />)
             )}
           </div>
         </main>
@@ -193,13 +233,15 @@ const Dashboard = () => {
   );
 };
 
+// -------------------------
 // Product Card
+// -------------------------
 const ProductCard = ({ product, addToCart }) => {
   const [quantity, setQuantity] = React.useState(product.min_order_qty || 1);
 
   const handleQuantityChange = (e) => {
     let val = Number(e.target.value);
-    if (val < product.min_order_qty) val = product.min_order_qty;
+    if (val < (product.min_order_qty || 1)) val = product.min_order_qty || 1;
     if (val > product.available_stock) val = product.available_stock;
     setQuantity(val);
   };
@@ -209,7 +251,7 @@ const ProductCard = ({ product, addToCart }) => {
       alert(`Cannot order more than available stock (${product.available_stock})`);
       return;
     }
-    addToCart({ ...product, quantity });
+    addToCart(product, quantity);
   };
 
   return (
@@ -220,17 +262,19 @@ const ProductCard = ({ product, addToCart }) => {
           alt={product.item_name}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
-        {product.available_stock <= 5 && (
-          <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full font-semibold shadow-lg">
-            Low Stock
-          </span>
-        )}
       </div>
+
       <div className="p-4 flex-1 flex flex-col justify-between">
         <h3 className="text-lg font-bold text-gray-800 truncate">{product.item_name}</h3>
-        <p className="text-sm text-gray-600 truncate">Farmer: <span className="font-semibold">{product.farmer_name}</span></p>
-        <p className="text-xs text-gray-500 mb-1 truncate">Location: <span className="font-semibold">{product.location || "N/A"}</span></p>
-        <p className="text-xs text-gray-500 mb-2">Distance: <span className="font-semibold">{product.distance}</span></p>
+        <p className="text-sm text-gray-600 truncate">
+          Farmer: <span className="font-semibold">{product.farmer_name}</span>
+        </p>
+        <p className="text-xs text-gray-500 truncate">
+          Location: <span className="font-semibold">{product.location || "N/A"}</span>
+        </p>
+        <p className="text-xs text-gray-500 mb-2">
+          Distance: <span className="font-semibold">{product.distance}</span>
+        </p>
 
         <div className="flex items-center justify-between mb-2">
           <p className="text-green-600 font-bold text-sm">Rs {product.price} / kg</p>

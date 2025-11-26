@@ -16,6 +16,9 @@ import ProductList from "./pages/farmer/ProductList";
 import ConsumerDashboard from "./pages/consumer/Dashboard";
 import Cart from "./pages/consumer/Cart";
 import Messages from "./pages/consumer/Messages";
+import axios from "axios";
+axios.defaults.withCredentials = true;
+
 
 function App() {
   return (
