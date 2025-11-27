@@ -7,6 +7,7 @@ const Dashboard = () => {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [toast, setToast] = useState("");
+  const [search, setSearch] = useState(""); // ⭐ ADDED
 
   // -------------------------
   // Fetch logged-in user
@@ -27,7 +28,7 @@ const Dashboard = () => {
   }, []);
 
   // -------------------------
-  // Fetch cart (centralized)
+  // Fetch cart
   // -------------------------
   const fetchCart = async () => {
     if (!user) return;
@@ -47,7 +48,7 @@ const Dashboard = () => {
   }, [user]);
 
   // -------------------------
-  // Add item to cart
+  // Add to cart
   // -------------------------
   const addToCart = async (product, quantity = 1) => {
     try {
@@ -61,7 +62,7 @@ const Dashboard = () => {
 
       if (res.ok) {
         setToast(`"${product.item_name}" added to cart`);
-        fetchCart(); // 🔥 Refresh cart instantly
+        fetchCart();
         setTimeout(() => setToast(""), 2000);
       } else {
         alert(data.message || "Failed to add to cart");
@@ -121,7 +122,7 @@ const Dashboard = () => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
     const R = 6371;
     const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
+    const dLon = deg2rad(lat2 - lat1);
     const a =
       Math.sin(dLat / 2) ** 2 +
       Math.cos(deg2rad(lat1)) *
@@ -132,10 +133,26 @@ const Dashboard = () => {
   };
 
   // -------------------------
+  // ADVANCED SEARCH FILTER
+  // -------------------------
+  const filteredProducts = products.filter((p) => {
+    const q = search.toLowerCase();
+
+    return (
+      p.item_name?.toLowerCase().includes(q) ||           // product name
+      p.farmer_name?.toLowerCase().includes(q) ||        // farmer
+      p.location?.toLowerCase().includes(q) ||           // location
+      p.category?.toLowerCase().includes(q) ||           // category (if exists)
+      p.distance?.toLowerCase().includes(q)              // distance text
+    );
+  });
+
+  // -------------------------
   // Render
   // -------------------------
   return (
     <div className="min-h-screen flex bg-gray-100">
+
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-lg p-6 flex flex-col">
         <div className="mb-8 text-center">
@@ -143,8 +160,8 @@ const Dashboard = () => {
             {user ? user.fullname[0] : "C"}
           </div>
           <h2 className="mt-4 text-xl font-bold text-gray-800">{user?.fullname || "Consumer"}</h2>
-          <p className="text-gray-500">{user?.email || "user@example.com"}</p>
-          <p className="text-gray-400 text-sm mt-1">Location: {user?.location || "N/A"}</p>
+          <p className="text-gray-500">{user?.email}</p>
+          <p className="text-gray-400 text-sm mt-1">Location: {user?.location}</p>
           <p className="text-gray-500 text-sm mt-2">Cart Items: {cart.length}</p>
         </div>
 
@@ -160,7 +177,10 @@ const Dashboard = () => {
             Cart ({cart.length})
           </Link>
 
-          <Link className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition">
+          <Link
+            to="/consumer/messages"
+            className="block text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 hover:shadow-md transition"
+          >
             Messages
           </Link>
 
@@ -187,10 +207,13 @@ const Dashboard = () => {
         <header className="bg-white shadow-md p-4 flex items-center justify-between">
           <div className="text-2xl font-bold text-green-600">KisanLink</div>
 
+          {/* SEARCH BAR */}
           <div className="flex-1 mx-6">
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search products, farmers, places..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -205,7 +228,7 @@ const Dashboard = () => {
               )}
             </Link>
 
-            <Link className="relative">
+            <Link to="/consumer/messages">
               <MessageCircle className="w-6 h-6 text-gray-700 cursor-pointer" />
             </Link>
 
@@ -218,13 +241,16 @@ const Dashboard = () => {
 
         <main className="flex-1 p-6 overflow-y-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Products Near You</h2>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.filter((p) => p.available_stock > 5).length === 0 ? (
-              <p className="text-gray-500 col-span-full">No products available.</p>
+            {filteredProducts.filter((p) => p.available_stock > 5).length === 0 ? (
+              <p className="text-gray-500 col-span-full">No products found.</p>
             ) : (
-              products
-                .filter((product) => product.available_stock > 5)
-                .map((product) => <ProductCard key={product.id} product={product} addToCart={addToCart} />)
+              filteredProducts
+                .filter((p) => p.available_stock > 5)
+                .map((product) => (
+                  <ProductCard key={product.id} product={product} addToCart={addToCart} />
+                ))
             )}
           </div>
         </main>
@@ -258,7 +284,11 @@ const ProductCard = ({ product, addToCart }) => {
     <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transform transition duration-300 overflow-hidden relative group">
       <div className="relative h-40">
         <img
-          src={product.photo_path ? `http://localhost:5001/uploads/${product.photo_path}` : "https://via.placeholder.com/150"}
+          src={
+            product.photo_path
+              ? `http://localhost:5001/uploads/${product.photo_path}`
+              : "https://via.placeholder.com/150"
+          }
           alt={product.item_name}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
